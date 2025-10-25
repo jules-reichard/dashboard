@@ -106,22 +106,37 @@ with tab2:
     st.write("This tab uses a Generative AI model to analyze the latest market data and provide a summary.")
 
     def get_ai_summary(data_context):
+        # ... (your existing get_ai_summary function remains unchanged) ...
         try:
             genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
             model = genai.GenerativeModel('gemini-pro')
             prompt = f"""
-            You are an expert financial market analyst providing a daily briefing...
-            """ # (The full prompt from before goes here)
+            You are an expert financial market analyst providing a daily briefing.
+            Based ONLY on the data provided below, write a concise summary of the current market sentiment.
+
+            Your analysis must cover:
+            1. The general behavior of the stock market (using S&P 500 as the benchmark).
+            2. The current market fear level (using the VIX). A VIX above 20 suggests heightened fear.
+            3. The economic outlook based on the 10-Year Treasury Yield. Rising yields can signal inflation fears or economic strength, often acting as a headwind for stocks.
+            4. Conclude by describing the relationship between these three indicators based on today's data (e.g., "Healthy Bull Market", "Inflationary Fear", "Panic/Crisis", or "Optimistic Recovery").
+
+            **Today's Data:**
+            {data_context}
+
+            **Your Analysis:**
+            """
             response = model.generate_content(prompt)
             return response.text
         except Exception as e:
             return f"Could not retrieve AI analysis. Error: {e}. Please ensure your GOOGLE_API_KEY is correctly set in the app settings."
 
-    if st.button("🤖 Analyze Current Market Situation"): # This will now appear correctly
-        if data is not None and not data.empty:
+    if st.button("🤖 Analyze Current Market Situation"):
+        # --- FIX STARTS HERE ---
+        # Check if data exists AND has more than one row before proceeding
+        if data is not None and len(data) > 1:
             with st.spinner("AI Analyst is processing the latest data..."):
                 latest_data = data.iloc[-1]
-                latest_returns = returns.iloc[-1]
+                latest_returns = returns.iloc[-1] # This line is now safe
                 context = f"""
                 - Date: {latest_data.name.strftime('%Y-%m-%d')}
                 - S&P 500 Close: {latest_data['S&P 500']:.2f} (Daily Change: {latest_returns['S&P 500']:.2%})
@@ -131,4 +146,6 @@ with tab2:
                 summary = get_ai_summary(context)
                 st.markdown(summary)
         else:
-            st.warning("Data could not be loaded. Please adjust the controls in the sidebar.")
+            # Display a helpful warning if the date range is too short
+            st.warning("Analysis requires a date range of at least two days. Please adjust the controls in the sidebar.")
+        # --- FIX ENDS HERE ---
