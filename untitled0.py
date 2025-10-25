@@ -117,8 +117,11 @@ if not data.empty:
     st.dataframe(corr.style.background_gradient(cmap='coolwarm', axis=None))
 
     st.subheader("📈 VIX vs S&P 500 Relationship")
-    vix_sp_corr = corr.loc["VIX", "S&P 500"]
-    st.metric("Correlation (VIX ↔ S&P 500)", f"{vix_sp_corr:.2f}")
+    if "VIX" in corr.index and "S&P 500" in corr.columns:
+        vix_sp_corr = corr.loc["VIX", "S&P 500"]
+        st.metric("Correlation (VIX ↔ S&P 500)", f"{vix_sp_corr:.2f}")
+    else:
+        st.warning("VIX or S&P 500 data unavailable — unable to compute correlation.")
 
 else:
     st.warning("No data available to display charts.")
