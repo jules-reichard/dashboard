@@ -109,7 +109,7 @@ with tab2:
         # ... (your existing get_ai_summary function remains unchanged) ...
         try:
             genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-            model = genai.GenerativeModel('gemini-pro')
+            model = genai.GenerativeModel('gemini-1.0-pro')
             prompt = f"""
             You are an expert financial market analyst providing a daily briefing.
             Based ONLY on the data provided below, write a concise summary of the current market sentiment.
