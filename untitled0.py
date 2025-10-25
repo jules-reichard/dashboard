@@ -107,7 +107,7 @@ with tab2:
 
     def get_ai_summary(data_context):
         try:
-            genai.configure(api_key=st.secrets["AIzaSyBGdozAwaLxw1fjKfxQEpKWLF_671KjYh4"])
+            genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
             model = genai.GenerativeModel('gemini-pro')
             prompt = f"""
             You are an expert financial market analyst providing a daily briefing...
