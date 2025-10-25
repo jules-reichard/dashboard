@@ -35,19 +35,20 @@ tickers = {
 def load_data(start_date, end_date):
     """Downloads historical data for all tickers."""
     try:
-        # yfinance downloads data for all tickers at once
         data = yf.download(list(tickers.values()), start=start_date, end=end_date)
         if data.empty:
             st.error("No data downloaded. Check ticker symbols and date range.")
             return None, None
-        
-        # We need both 'Adj Close' for prices and 'Close' for yields/VIX
-        adj_close = data['Adj Close']
-        close = data['Close'] # Yields/VIX don't have 'Adj Close'
-        
-        # Combine them, prioritizing Adj Close where available
-        combined_data = adj_close.combine_first(close)
-        
+
+        # --- FIX STARTS HERE ---
+        # Gracefully handle that some tickers (like '^VIX') only have 'Close'.
+        # We will prioritize 'Adj Close' but fill any missing values with 'Close'.
+        if 'Adj Close' in data.columns:
+            combined_data = data['Adj Close'].combine_first(data['Close'])
+        else:
+            combined_data = data['Close']
+        # --- FIX ENDS HERE ---
+
         # Rename columns to be user-friendly
         combined_data.columns = tickers.keys()
         
