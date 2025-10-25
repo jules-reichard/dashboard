@@ -119,33 +119,33 @@ with tab2:
     st.header("Automated Market Analysis")
     st.write("This tab uses a Generative AI model to analyze the latest market data and provide a summary.")
 
-    # --- Function to get AI summary (using Google's Gemini) ---
-    def get_ai_summary(data_context):
-        try:
-            # Use st.secrets for API key management in deployed apps
-            genai.configure(api_key=st.secrets["AIzaSyBGdozAwaLxw1fjKfxQEpKWLF_671KjYh4"])
-            model = genai.GenerativeModel('gemini-pro')
+def get_ai_summary(data_context):
+    try:
+        # Use st.secrets for API key management in deployed apps
+        # This line uses the NAME of the secret, not the key itself.
+        genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+        model = genai.GenerativeModel('gemini-pro')
 
-            prompt = f"""
-            You are an expert financial market analyst providing a daily briefing.
-            Based ONLY on the data provided below, write a concise summary of the current market sentiment.
+        prompt = f"""
+        You are an expert financial market analyst providing a daily briefing.
+        Based ONLY on the data provided below, write a concise summary of the current market sentiment.
 
-            Your analysis must cover:
-            1. The general behavior of the stock market (using S&P 500 as the benchmark).
-            2. The current market fear level (using the VIX). A VIX above 20 suggests heightened fear.
-            3. The economic outlook based on the 10-Year Treasury Yield. Rising yields can signal inflation fears or economic strength, often acting as a headwind for stocks.
-            4. Conclude by describing the relationship between these three indicators based on today's data (e.g., "Healthy Bull Market", "Inflationary Fear", "Panic/Crisis", or "Optimistic Recovery").
+        Your analysis must cover:
+        1. The general behavior of the stock market (using S&P 500 as the benchmark).
+        2. The current market fear level (using the VIX). A VIX above 20 suggests heightened fear.
+        3. The economic outlook based on the 10-Year Treasury Yield. Rising yields can signal inflation fears or economic strength, often acting as a headwind for stocks.
+        4. Conclude by describing the relationship between these three indicators based on today's data (e.g., "Healthy Bull Market", "Inflationary Fear", "Panic/Crisis", or "Optimistic Recovery").
 
-            **Today's Data:**
-            {data_context}
+        **Today's Data:**
+        {data_context}
 
-            **Your Analysis:**
-            """
+        **Your Analysis:**
+        """
 
-            response = model.generate_content(prompt)
-            return response.text
-        except Exception as e:
-            return f"Could not retrieve AI analysis. Error: {e}. Please ensure your GOOGLE_API_KEY is correctly set in secrets.toml."
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        return f"Could not retrieve AI analysis. Error: {e}. Please ensure your GOOGLE_API_KEY is correctly set in the app settings on Streamlit Cloud."
 
     # --- Button to trigger the analysis ---
     if st.button("🤖 Analyze Current Market Situation"):
