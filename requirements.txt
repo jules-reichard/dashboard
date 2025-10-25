@@ -1,6 +1,8 @@
-# requirements.txt
 streamlit
-pandas
 yfinance
+pandas
+numpy
+requests
 plotly
-google-generativeai
+torch
+transformers
