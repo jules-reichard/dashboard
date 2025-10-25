@@ -1,151 +1,136 @@
-import pandas as pd
 import streamlit as st
-import plotly.express as px
+import pandas as pd
+import numpy as np
 import yfinance as yf
-from datetime import datetime
-import google.generativeai as genai
+import requests
+from transformers import pipeline
+from datetime import date
+import plotly.express as px
 
-# --- PAGE CONFIGURATION ---
+# Optional: uncomment if using FRED
+# from fredapi import Fred
+
+# -----------------------------
+# CONFIGURATION
+# -----------------------------
 st.set_page_config(
-    page_title="Financial Market Dashboard",
-    layout="wide"
+    page_title="Financial Dashboard",
+    layout="wide",
+    page_icon="📈"
 )
 
-st.title("Financial Market Dashboard 📈")
+# Custom background (dark theme)
+st.markdown(
+    """
+    <style>
+    [data-testid="stAppViewContainer"] {
+        background: linear-gradient(135deg, #0D1117 0%, #1B2838 100%);
+        color: white;
+    }
+    [data-testid="stHeader"] {
+        background: rgba(0,0,0,0);
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
-# --- DATA FETCHING ---
-tickers = {
-    'S&P 500': '^GSPC',
-    'Nasdaq 100': '^NDX',
-    'VIX': '^VIX',
-    'BTC-USD': 'BTC-USD',
-    '10-Year Treasury Yield': '^TNX',
-    '2-Year Treasury Yield': '^FVX',
-    'CAC 40 (France)': '^FCHI',
-    'DAX (Germany)': '^GDAXI',
-    'Nikkei 225 (Japan)': '^N225',
-    'Hang Seng (Hong Kong)': '^HSI',
-    'Crude Oil': 'CL=F',
-    'Gold': 'GC=F'
-}
+# -----------------------------
+# FUNCTIONS
+# -----------------------------
 
-@st.cache_data
-def load_data(start_date, end_date):
-    """Downloads historical data for all tickers."""
-    try:
-        data = yf.download(list(tickers.values()), start=start_date, end=end_date)
-        if data.empty:
-            st.error("No data downloaded. Check ticker symbols and date range.")
-            return None, None
-        
-        if 'Adj Close' in data.columns:
-            combined_data = data['Adj Close'].combine_first(data['Close'])
-        else:
-            combined_data = data['Close']
-        
-        combined_data.columns = tickers.keys()
-        returns = combined_data.pct_change().dropna()
-        return combined_data.dropna(how='all'), returns
-    except Exception as e:
-        st.error(f"An error occurred while fetching data: {e}")
-        return None, None
+@st.cache_data(ttl=3600)
+def get_market_data():
+    tickers = {
+        "S&P 500": "^GSPC",
+        "VIX": "^VIX",
+        "NASDAQ 100": "^NDX",
+        "CAC 40": "^FCHI",
+        "BTC": "BTC-USD",
+        "Nikkei 225": "^N225",
+        "Hang Seng": "^HSI"
+    }
+    data = {name: yf.download(symbol, period="6mo")["Close"] for name, symbol in tickers.items()}
+    return pd.DataFrame(data)
 
-# --- SIDEBAR & DATA LOADING (MOVED TO TOP LEVEL) ---
-# This ensures they are always available, regardless of the selected tab.
-st.sidebar.header("Dashboard Controls")
-start_date = st.sidebar.date_input("Start Date", datetime(2020, 1, 1))
-end_date = st.sidebar.date_input("End Date", "today")
+@st.cache_data(ttl=3600)
+def get_interest_rate():
+    # Placeholder value if FRED not configured
+    # For live data, use FRED API (uncomment below and add your key)
+    # fred = Fred(api_key=st.secrets["FRED_KEY"])
+    # rate = fred.get_series_latest_release("DGS10")[-1]
+    # return rate
+    return 4.25  # Example static interest rate
 
-data, returns = load_data(start_date, end_date)
+def get_top_news(api_key):
+    url = f'https://newsapi.org/v2/top-headlines?category=business&pageSize=10&apiKey={api_key}'
+    articles = requests.get(url).json().get('articles', [])
+    return [a['title'] for a in articles]
 
-# --- UI TABS ---
-tab1, tab2 = st.tabs(["📊 Market Data & Charts", "🤖 AI Analyst Summary"])
+def analyze_sentiment(headlines):
+    if not headlines:
+        return [], 0, 0
+    sentiment_pipeline = pipeline("sentiment-analysis")
+    results = sentiment_pipeline(headlines)
+    scores = [r['score'] if r['label'] == 'POSITIVE' else -r['score'] for r in results]
+    avg_sentiment = np.mean(scores)
+    success_percent = (sum(s > 0 for s in scores) / len(scores)) * 100
+    return results, avg_sentiment, success_percent
 
-# ==============================================================================
-# TAB 1: MARKET DATA & CHARTS
-# ==============================================================================
-with tab1:
-    st.header("Market Performance and Volatility Analysis")
+# -----------------------------
+# DASHBOARD
+# -----------------------------
 
-    if data is not None:
-        st.subheader("Normalized Performance Comparison")
-        normalized_data = (data / data.iloc[0]) * 100
-        
-        assets_to_plot = st.multiselect(
-            "Select assets to compare:",
-            options=data.columns,
-            default=['S&P 500', 'Nasdaq 100', 'BTC-USD', 'Gold']
-        )
-        if assets_to_plot:
-            fig1 = px.line(normalized_data[assets_to_plot], title="Asset Growth Over Time (Normalized to 100)")
-            st.plotly_chart(fig1, use_container_width=True)
-        
-        st.subheader("S&P 500 vs. VIX (Fear Index)")
-        fig2 = px.line(data, x=data.index, y=['S&P 500', 'VIX'], 
-                       title='S&P 500 vs. Volatility Index (VIX)',
-                       labels={'value': 'Price / Index Level'})
-        fig2.update_traces(yaxis="y2", selector=dict(name='VIX'))
-        st.plotly_chart(fig2, use_container_width=True)
+st.title("📊 Global Financial Dashboard")
+st.caption(f"Updated: {date.today().strftime('%B %d, %Y')}")
 
-        st.subheader("10-Year vs. 2-Year Treasury Yield Spread (Recession Indicator)")
-        data['Yield Spread'] = data['10-Year Treasury Yield'] - data['2-Year Treasury Yield']
-        fig3 = px.area(data, x=data.index, y='Yield Spread', title='Yield Curve Spread (10Y - 2Y)')
-        fig3.add_hline(y=0, line_dash="dash", line_color="red", annotation_text="Inversion Threshold")
-        st.plotly_chart(fig3, use_container_width=True)
+# --- Market Data ---
+st.header("Market Overview")
+data = get_market_data()
+st.line_chart(data)
 
-        with st.expander("Show Raw Data Table"):
-            st.dataframe(data.style.format("{:.2f}"))
-    else:
-        st.warning("Data could not be loaded. Please check your inputs in the sidebar.")
+st.subheader("📉 Correlation Matrix")
+corr = data.corr()
+st.dataframe(corr.style.background_gradient(cmap='coolwarm', axis=None))
 
-# ==============================================================================
-# TAB 2: AI ANALYST SUMMARY
-# ==============================================================================
-with tab2:
-    st.header("Automated Market Analysis")
-    st.write("This tab uses a Generative AI model to analyze the latest market data and provide a summary.")
+# VIX and Market Relationship
+st.subheader("📈 VIX vs S&P 500 Relationship")
+vix_sp_corr = corr.loc["VIX", "S&P 500"]
+st.metric("Correlation (VIX ↔ S&P 500)", f"{vix_sp_corr:.2f}")
 
-    def get_ai_summary(data_context):
-        # ... (your existing get_ai_summary function remains unchanged) ...
-        try:
-            genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-            model = genai.GenerativeModel('gemini-1.0-pro')
-            prompt = f"""
-            You are an expert financial market analyst providing a daily briefing.
-            Based ONLY on the data provided below, write a concise summary of the current market sentiment.
+# Interest Rates
+rate = get_interest_rate()
+st.metric("10-Year Treasury Rate (%)", rate)
 
-            Your analysis must cover:
-            1. The general behavior of the stock market (using S&P 500 as the benchmark).
-            2. The current market fear level (using the VIX). A VIX above 20 suggests heightened fear.
-            3. The economic outlook based on the 10-Year Treasury Yield. Rising yields can signal inflation fears or economic strength, often acting as a headwind for stocks.
-            4. Conclude by describing the relationship between these three indicators based on today's data (e.g., "Healthy Bull Market", "Inflationary Fear", "Panic/Crisis", or "Optimistic Recovery").
+# --- News Sentiment ---
+st.header("🗞️ News Sentiment Analysis")
+api_key = st.text_input("Enter your NewsAPI key:", type="password")
 
-            **Today's Data:**
-            {data_context}
+if api_key:
+    with st.spinner("Fetching latest business news..."):
+        headlines = get_top_news(api_key)
+        st.write("**Top 10 Headlines:**")
+        for h in headlines:
+            st.write(f"- {h}")
 
-            **Your Analysis:**
-            """
-            response = model.generate_content(prompt)
-            return response.text
-        except Exception as e:
-            return f"Could not retrieve AI analysis. Error: {e}. Please ensure your GOOGLE_API_KEY is correctly set in the app settings."
+        results, avg_sentiment, success_percent = analyze_sentiment(headlines)
 
-    if st.button("🤖 Analyze Current Market Situation"):
-        # --- FIX STARTS HERE ---
-        # Check if data exists AND has more than one row before proceeding
-        if data is not None and len(data) > 1:
-            with st.spinner("AI Analyst is processing the latest data..."):
-                latest_data = data.iloc[-1]
-                latest_returns = returns.iloc[-1] # This line is now safe
-                context = f"""
-                - Date: {latest_data.name.strftime('%Y-%m-%d')}
-                - S&P 500 Close: {latest_data['S&P 500']:.2f} (Daily Change: {latest_returns['S&P 500']:.2%})
-                - VIX Close: {latest_data['VIX']:.2f} (Daily Change: {latest_returns['VIX']:.2%})
-                - 10-Year Treasury Yield: {latest_data['10-Year Treasury Yield']:.2f}% (Daily Change: {latest_returns['10-Year Treasury Yield']:.2%})
-                """
-                summary = get_ai_summary(context)
-                st.markdown(summary)
-        else:
-            # Display a helpful warning if the date range is too short
-            st.warning("Analysis requires a date range of at least two days. Please adjust the controls in the sidebar.")
-        # --- FIX ENDS HERE ---
+        st.subheader("Sentiment Summary")
+        col1, col2 = st.columns(2)
+        col1.metric("Average Sentiment", f"{avg_sentiment:.2f}")
+        col2.metric("Positive Forecast (%)", f"{success_percent:.1f}%")
+
+        # Show details
+        results_df = pd.DataFrame(results)
+        st.write("Detailed Results", results_df)
+
+        # Visualization
+        fig = px.bar(results_df, x=results_df.index, y="score", color="label",
+                     title="Sentiment by Article", text="label")
+        st.plotly_chart(fig, use_container_width=True)
+else:
+    st.info("Please enter your NewsAPI key above to fetch news sentiment.")
+
+# --- Footer ---
+st.markdown("---")
+st.caption("Built with ❤️ in Streamlit • Data from Yahoo Finance, NewsAPI, and Transformers")
