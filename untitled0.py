@@ -1,171 +1,155 @@
-import streamlit as st
+# app.py
+
+# 1. Libaries
 import pandas as pd
-import numpy as np
-import yfinance as yf
-import requests
-from transformers import pipeline
-from datetime import date
+import streamlit as st
 import plotly.express as px
+import yfinance as yf
+import datetime as dt
+from datetime import datetime, timedelta
+import feedparser
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
-# Optional: uncomment if you have a FRED API key
-# from fredapi import Fred
-
-# -----------------------------
-# CONFIGURATION
-# -----------------------------
+# --- PAGE CONFIGURATION ---
 st.set_page_config(
     page_title="Financial Dashboard",
-    layout="wide",
-    page_icon="📈"
+    page_icon="💹",
+    layout="wide"
 )
 
-# Custom background (dark theme)
-st.markdown(
-    """
-    <style>
-    [data-testid="stAppViewContainer"] {
-        background: linear-gradient(135deg, #0D1117 0%, #1B2838 100%);
-        color: white;
-    }
-    [data-testid="stHeader"] {
-        background: rgba(0,0,0,0);
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
+# --- DATA LOADING AND CACHING ---
+# Use caching to avoid re-loading data on every interaction
+@st.cache_data
+def load_stock_data():
+    # Defining date ranges
+    today = datetime.today()
+    ten_years_ago = today - timedelta(days=365 * 10)
 
-# -----------------------------
-# FUNCTIONS
-# -----------------------------
-
-@st.cache_data(ttl=3600)
-def get_market_data():
     tickers = {
-        "S&P 500": "^GSPC",
-        "VIX": "^VIX",
-        "NASDAQ 100": "^NDX",
-        "CAC 40": "^FCHI",
-        "BTC": "BTC-USD",
-        "Nikkei 225": "^N225",
-        "Hang Seng": "^HSI"
+        'S&P 500': '^GSPC',
+        'VIX': '^VIX',
+        'NASDAQ 100': '^NDX',
+        'CAC 40': '^FCHI',
+        'Nikkei 225': '^N225',
+        'Hang Seng': '^HSI'
     }
+    
+    # Use a single yf.download call for efficiency
+    ticker_string = " ".join(tickers.values())
+    raw_data = yf.download(ticker_string, start=ten_years_ago, end=today)
+    
+    # We only need the 'Close' prices for this dashboard
+    close_prices = raw_data['Close'].copy()
+    
+    # Rename columns to be more friendly (e.g., '^GSPC' -> 'S&P 500')
+    column_map = {v: k for k, v in tickers.items()}
+    close_prices.rename(columns=column_map, inplace=True)
+    
+    # Handle potential missing values by forward-filling
+    close_prices.ffill(inplace=True)
+    
+    return close_prices
 
-    data = {}
-    for name, symbol in tickers.items():
-        try:
-            df = yf.download(symbol, period="6mo", progress=False)
-            if not df.empty:
-                data[name] = df["Close"]
-            else:
-                st.warning(f"No data for {name} ({symbol})")
-        except Exception as e:
-            st.warning(f"Error fetching {name}: {e}")
+# Function to fetch and analyze news sentiment
+@st.cache_data(ttl=3600) # Cache for 1 hour
+def get_news_sentiment():
+    rss_url = "https://www.cnbc.com/id/100003114/device/rss/rss.html"
+    feed = feedparser.parse(rss_url)
+    
+    N = 30 # Number of headlines
+    titles = [entry.title for entry in feed.entries[:N]]
+    news_df = pd.DataFrame(titles, columns=['Title'])
 
-    if not data:
-        st.error("No market data could be retrieved. Please try again later.")
-        return pd.DataFrame()
+    analyzer = SentimentIntensityAnalyzer()
 
-    df_all = pd.concat(data, axis=1)
-    df_all.columns = df_all.columns.droplevel(0) if isinstance(df_all.columns, pd.MultiIndex) else df_all.columns
-    return df_all
-
-@st.cache_data(ttl=3600)
-def get_interest_rate():
-    # Placeholder value — replace with FRED if needed
-    # fred = Fred(api_key=st.secrets["FRED_KEY"])
-    # rate = fred.get_series_latest_release("DGS10")[-1]
-    # return rate
-    return 4.25  # Static fallback rate
-
-def get_top_news(api_key):
-    url = f'https://newsapi.org/v2/top-headlines?category=business&pageSize=10&apiKey={api_key}'
-    try:
-        res = requests.get(url)
-        res.raise_for_status()
-        articles = res.json().get('articles', [])
-        return [a['title'] for a in articles]
-    except Exception as e:
-        st.error(f"Error fetching news: {e}")
-        return []
-
-def analyze_sentiment(headlines):
-    if not headlines:
-        return [], 0, 0
-    sentiment_pipeline = pipeline("sentiment-analysis")
-    results = sentiment_pipeline(headlines)
-    scores = [r['score'] if r['label'] == 'POSITIVE' else -r['score'] for r in results]
-    avg_sentiment = np.mean(scores)
-    success_percent = (sum(s > 0 for s in scores) / len(scores)) * 100
-    return results, avg_sentiment, success_percent
-
-# -----------------------------
-# DASHBOARD
-# -----------------------------
-st.title("📊 Global Financial Dashboard")
-st.caption(f"Updated: {date.today().strftime('%B %d, %Y')}")
-
-# --- Market Data ---
-st.header("Market Overview")
-data = get_market_data()
-
-if not data.empty:
-    st.line_chart(data)
-
-    st.subheader("📉 Correlation Matrix")
-    corr = data.corr()
-    st.dataframe(corr.style.background_gradient(cmap='coolwarm', axis=None))
-
-    st.subheader("📈 VIX vs S&P 500 Relationship")
-    if "VIX" in corr.index and "S&P 500" in corr.columns:
-        vix_sp_corr = corr.loc["VIX", "S&P 500"]
-        st.metric("Correlation (VIX ↔ S&P 500)", f"{vix_sp_corr:.2f}")
-    else:
-        st.warning("VIX or S&P 500 data unavailable — unable to compute correlation.")
-
-else:
-    st.warning("No data available to display charts.")
-
-# Interest Rates
-rate = get_interest_rate()
-st.metric("10-Year Treasury Rate (%)", rate)
-
-# --- News Sentiment ---
-st.header("🗞️ News Sentiment Analysis")
-api_key = st.text_input("Enter your NewsAPI key:", type="password")
-
-if api_key:
-    with st.spinner("Fetching latest business news..."):
-        headlines = get_top_news(api_key)
-        if headlines:
-            st.write("**Top 10 Headlines:**")
-            for h in headlines:
-                st.write(f"- {h}")
-
-            results, avg_sentiment, success_percent = analyze_sentiment(headlines)
-
-            st.subheader("Sentiment Summary")
-            col1, col2 = st.columns(2)
-            col1.metric("Average Sentiment", f"{avg_sentiment:.2f}")
-            col2.metric("Positive Forecast (%)", f"{success_percent:.1f}%")
-
-            results_df = pd.DataFrame(results)
-            st.write("Detailed Results", results_df)
-
-            fig = px.bar(
-                results_df,
-                x=results_df.index,
-                y="score",
-                color="label",
-                title="Sentiment by Article",
-                text="label"
-            )
-            st.plotly_chart(fig, use_container_width=True)
+    def get_vader_sentiment(text):
+        score = analyzer.polarity_scores(text)['compound']
+        if score >= 0.05:
+            return 'Positive'
+        elif score <= -0.05:
+            return 'Negative'
         else:
-            st.warning("No news articles were returned.")
-else:
-    st.info("Please enter your NewsAPI key above to fetch news sentiment.")
+            return 'Neutral'
 
-# --- Footer ---
-st.markdown("---")
-st.caption("Built with ❤️ in Streamlit • Data from Yahoo Finance, NewsAPI, and Transformers")
+    news_df['Sentiment'] = news_df['Title'].apply(get_vader_sentiment)
+    return news_df
+
+
+# --- APP LAYOUT ---
+
+# Load the data
+df_close = load_stock_data()
+
+st.title("📈 Financial Markets Dashboard")
+st.write("Data sourced from Yahoo Finance and CNBC over the last 10 years.")
+
+# --- DISPLAY CHARTS AND DATA ---
+
+st.header("Index Price Evolution (Normalized)")
+
+# Normalize the data to compare performance
+df_normalized = df_close / df_close.iloc[0]
+
+# User selection for the main chart
+indices_to_plot = st.multiselect(
+    "Select indices to display:",
+    options=df_normalized.columns,
+    default=['S&P 500', 'NASDAQ 100', 'CAC 40']
+)
+
+if indices_to_plot:
+    # Use Plotly for interactive charts
+    fig = px.line(df_normalized[indices_to_plot], title='Normalized Close Prices')
+    st.plotly_chart(fig, use_container_width=True)
+else:
+    st.warning("Please select at least one index to display the chart.")
+
+
+# --- SENTIMENT ANALYSIS SECTION ---
+st.header("📰 Latest Financial News Sentiment")
+st.write("Sentiment analysis of the latest 30 headlines from CNBC's World News RSS feed.")
+
+news_df = get_news_sentiment()
+sentiment_counts = news_df['Sentiment'].value_counts()
+
+# Create two columns for layout
+col1, col2 = st.columns([1, 2])
+
+with col1:
+    st.subheader("Sentiment Distribution")
+    # Pie chart for sentiment distribution
+    fig_sentiment = px.pie(
+        sentiment_counts, 
+        values=sentiment_counts.values, 
+        names=sentiment_counts.index,
+        color=sentiment_counts.index,
+        color_discrete_map={'Positive':'green', 'Negative':'red', 'Neutral':'grey'}
+    )
+    fig_sentiment.update_layout(showlegend=False)
+    st.plotly_chart(fig_sentiment, use_container_width=True)
+
+with col2:
+    st.subheader("Recent Headlines")
+    # Display headlines with sentiment
+    st.dataframe(
+        news_df, 
+        use_container_width=True,
+        column_config={
+            "Sentiment": st.column_config.TextColumn(
+                "Sentiment",
+            )
+        },
+        hide_index=True
+    )
+
+# You can add more sections from your notebook here, like the annual returns calculation
+st.header("Annualized Returns & Volatility")
+annual_returns = df_close.pct_change().mean() * 252
+annual_volatility = df_close.pct_change().std() * (252**0.5)
+
+summary_df = pd.DataFrame({
+    'Annualized Return': annual_returns,
+    'Annualized Volatility': annual_volatility
+})
+
+st.dataframe(summary_df.style.format("{:.2%}"))
