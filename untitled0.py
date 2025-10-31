@@ -112,12 +112,9 @@ with tabs[0]:
         
         N = 252  # Number of trading days in a year
         
-        # --- Updated Annualized Return Calculation ---
-        # Use geometric mean (based on start/end price) for a more accurate annualized return
-        num_days = len(close_data)
-        total_return_ratio = (close_data.iloc[-1] / close_data.iloc[0])
-        annualized_returns = (total_return_ratio ** (N / num_days) - 1) * 100
-        # --- End of Updated Calculation ---
+        # --- Reverted to Annualized Return Calculation (Arithmetic Mean) ---
+        annualized_returns = daily_returns.mean().apply(lambda x: ((1 + x)**N - 1) * 100)
+        # --- End of Reverted Calculation ---
         
         # Calculate annualized volatility (standard formula)
         annualized_vol = daily_returns.std() * np.sqrt(N) * 100
