@@ -162,7 +162,7 @@ with tabs[0]:
 # 2️⃣ FINANCIAL STATEMENTS TAB
 # ------------------------------
 with tabs[1]:
-    st.subheader("💰 Company Financial Statements")
+    st.subheader(f"💰 {selected_ticker} Financial Statements")
 
     @st.cache_data
     def get_financials(ticker):
@@ -207,6 +207,35 @@ with tabs[1]:
         # --- Income Statement ---
         st.markdown("### 🧾 Income Statement")
         if not IS.empty:
+            # --- Interactive Chart ---
+            is_plot_df = IS.T.reset_index().sort_values(by='index')
+            is_plot_df = is_plot_df.rename(columns={'index': 'Year'})
+            is_plot_df['Year'] = is_plot_df['Year'].astype(str)
+            is_metrics = is_plot_df.columns.drop('Year').tolist()
+            default_is_metrics = [m for m in ['Total Revenue', 'Gross Profit', 'Net Income'] if m in is_metrics]
+            
+            selected_is_metrics = st.multiselect(
+                "Select Income Statement metrics to plot",
+                options=is_metrics,
+                default=default_is_metrics,
+                key="is_multiselect"
+            )
+            
+            if selected_is_metrics:
+                is_melted = is_plot_df.melt(id_vars='Year', value_vars=selected_is_metrics, var_name='Metric', value_name='Amount (k)')
+                is_melted['Amount (k)'] = is_melted['Amount (k)'] / 1000  # Format in k
+                
+                fig_is = px.line(
+                    is_melted, 
+                    x='Year', 
+                    y='Amount (k)', 
+                    color='Metric', 
+                    title=f"{selected_ticker} Income Statement Trends (in thousands)",
+                    markers=True
+                )
+                st.plotly_chart(fig_is, use_container_width=True)
+            # --- End Chart ---
+
             is_display, is_formatter = format_financials_df(IS)
             st.dataframe(is_display.style.format(na_rep='-', formatter=is_formatter))
         else:
@@ -215,6 +244,35 @@ with tabs[1]:
         # --- Balance Sheet ---
         st.markdown("### 📋 Balance Sheet")
         if not BS.empty:
+            # --- Interactive Chart ---
+            bs_plot_df = BS.T.reset_index().sort_values(by='index')
+            bs_plot_df = bs_plot_df.rename(columns={'index': 'Year'})
+            bs_plot_df['Year'] = bs_plot_df['Year'].astype(str)
+            bs_metrics = bs_plot_df.columns.drop('Year').tolist()
+            default_bs_metrics = [m for m in ['Total Assets', 'Total Liabilities Net Minority Interest', 'Stockholders Equity'] if m in bs_metrics]
+
+            selected_bs_metrics = st.multiselect(
+                "Select Balance Sheet metrics to plot",
+                options=bs_metrics,
+                default=default_bs_metrics,
+                key="bs_multiselect"
+            )
+            
+            if selected_bs_metrics:
+                bs_melted = bs_plot_df.melt(id_vars='Year', value_vars=selected_bs_metrics, var_name='Metric', value_name='Amount (k)')
+                bs_melted['Amount (k)'] = bs_melted['Amount (k)'] / 1000
+                
+                fig_bs = px.line(
+                    bs_melted, 
+                    x='Year', 
+                    y='Amount (k)', 
+                    color='Metric', 
+                    title=f"{selected_ticker} Balance Sheet Trends (in thousands)",
+                    markers=True
+                )
+                st.plotly_chart(fig_bs, use_container_width=True)
+            # --- End Chart ---
+
             bs_display, bs_formatter = format_financials_df(BS)
             st.dataframe(bs_display.style.format(na_rep='-', formatter=bs_formatter))
         else:
@@ -223,6 +281,35 @@ with tabs[1]:
         # --- Cash Flow Statement ---
         st.markdown("### 💵 Cash Flow Statement")
         if not CF.empty:
+            # --- Interactive Chart ---
+            cf_plot_df = CF.T.reset_index().sort_values(by='index')
+            cf_plot_df = cf_plot_df.rename(columns={'index': 'Year'})
+            cf_plot_df['Year'] = cf_plot_df['Year'].astype(str)
+            cf_metrics = cf_plot_df.columns.drop('Year').tolist()
+            default_cf_metrics = [m for m in ['Operating Cash Flow', 'Free Cash Flow', 'Capital Expenditure'] if m in cf_metrics]
+
+            selected_cf_metrics = st.multiselect(
+                "Select Cash Flow metrics to plot",
+                options=cf_metrics,
+                default=default_cf_metrics,
+                key="cf_multiselect"
+            )
+
+            if selected_cf_metrics:
+                cf_melted = cf_plot_df.melt(id_vars='Year', value_vars=selected_cf_metrics, var_name='Metric', value_name='Amount (k)')
+                cf_melted['Amount (k)'] = cf_melted['Amount (k)'] / 1000
+                
+                fig_cf = px.line(
+                    cf_melted, 
+                    x='Year', 
+                    y='Amount (k)', 
+                    color='Metric', 
+                    title=f"{selected_ticker} Cash Flow Trends (in thousands)",
+                    markers=True
+                )
+                st.plotly_chart(fig_cf, use_container_width=True)
+            # --- End Chart ---
+
             cf_display, cf_formatter = format_financials_df(CF)
             st.dataframe(cf_display.style.format(na_rep='-', formatter=cf_formatter))
         else:
