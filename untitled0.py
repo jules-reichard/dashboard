@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import numpy as np  # Added for calculations
 import plotly.graph_objects as go
 import plotly.express as px  # Added for the pie chart
 import yfinance as yf
@@ -96,6 +97,30 @@ with tabs[0]:
         # Descriptive Statistics
         st.markdown("#### Descriptive Statistics (Close Prices)")
         st.dataframe(close_data.describe()) # Describe only the close prices
+        
+        # --- Annualized Metrics ---
+        st.markdown("#### Annualized Metrics")
+        
+        # Calculate daily returns
+        daily_returns = close_data.pct_change()
+        
+        N = 252  # Number of trading days in a year
+        
+        # Calculate annualized returns
+        annualized_returns = daily_returns.mean().apply(lambda x: ((1 + x)**N - 1) * 100)
+        
+        # Calculate annualized volatility
+        annualized_vol = daily_returns.std() * np.sqrt(N) * 100
+        
+        # Combine into a DataFrame
+        annual_stats_df = pd.DataFrame({
+            'Annualized Return': annualized_returns,
+            'Annualized Volatility': annualized_vol
+        })
+        
+        # Display as formatted percentages
+        st.dataframe(annual_stats_df.style.format("{:.2f}%"))
+
     else:
         st.warning("No stock data available to display.")
 
