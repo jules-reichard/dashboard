@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
+import plotly.express as px  # Added for the pie chart
 import yfinance as yf
 import feedparser
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
@@ -93,17 +94,53 @@ with tabs[1]:
         stock = yf.Ticker(ticker)
         return stock.income_stmt, stock.balance_sheet, stock.cashflow
 
+    # Helper function to add % change columns
+    def add_pct_change(df):
+        if df.empty:
+            return df
+        # Calculate pct_change (year-over-year)
+        # yfinance columns are descending, so periods=-1 compares to the previous year (next column)
+        df_pct = df.pct_change(axis=1, periods=-1)
+        
+        # Create a new dataframe to hold interleaved columns
+        combined_df = pd.DataFrame()
+        
+        for col in df.columns:
+            col_name = col.strftime('%Y-%m-%d')
+            pct_col_name = f"{col.year} % Chg"
+            
+            combined_df[col_name] = df[col]
+            if col in df_pct.columns:
+                combined_df[pct_col_name] = df_pct[col]
+                
+        return combined_df
+
     try:
         IS, BS, CF = get_financials(selected_ticker)
 
+        # --- Income Statement ---
         st.markdown("### 🧾 Income Statement")
-        st.dataframe(IS)
+        if not IS.empty:
+            is_display = add_pct_change(IS)
+            st.dataframe(is_display.style.format(na_rep='-', formatter={col: '{:,.2%}' for col in is_display.columns if '% Chg' in str(col)}))
+        else:
+            st.warning("No Income Statement data available.")
 
+        # --- Balance Sheet ---
         st.markdown("### 📋 Balance Sheet")
-        st.dataframe(BS)
+        if not BS.empty:
+            bs_display = add_pct_change(BS)
+            st.dataframe(bs_display.style.format(na_rep='-', formatter={col: '{:,.2%}' for col in bs_display.columns if '% Chg' in str(col)}))
+        else:
+            st.warning("No Balance Sheet data available.")
 
+        # --- Cash Flow Statement ---
         st.markdown("### 💵 Cash Flow Statement")
-        st.dataframe(CF)
+        if not CF.empty:
+            cf_display = add_pct_change(CF)
+            st.dataframe(cf_display.style.format(na_rep='-', formatter={col: '{:,.2%}' for col in cf_display.columns if '% Chg' in str(col)}))
+        else:
+            st.warning("No Cash Flow Statement data available.")
 
     except Exception as e:
         st.error(f"Error loading financial statements: {e}")
@@ -143,7 +180,26 @@ with tabs[2]:
         avg_sentiment = headlines["Sentiment Score"].mean()
 
         st.metric("Average Sentiment (Recent CNBC Headlines)", f"{avg_sentiment:.2f}")
+
+        # --- Added Pie Chart ---
+        sentiment_counts = headlines["Sentiment"].value_counts().reset_index(name='Count')
         
+        fig_pie = px.pie(
+            sentiment_counts, 
+            names='Sentiment', 
+            values='Count', 
+            title='Sentiment Distribution',
+            color='Sentiment',
+            color_discrete_map={
+                'Positive': 'seagreen', 
+                'Negative': 'tomato', 
+                'Neutral': 'silver'
+            }
+        )
+        st.plotly_chart(fig_pie, use_container_width=True)
+        
+        # --- End of Added Pie Chart ---
+
         # Display DataFrame with clickable links
         st.dataframe(
             headlines[["Title", "Sentiment", "Sentiment Score", "Link"]],
@@ -154,3 +210,4 @@ with tabs[2]:
         st.caption("News source: CNBC RSS Feed")
     else:
         st.warning("Could not fetch news headlines for sentiment analysis.")
+
