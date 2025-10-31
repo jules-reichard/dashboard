@@ -32,7 +32,14 @@ with tabs[0]:
 
     @st.cache_data
     def load_data(ticker, start, end):
+        # Ensure end date is not in the future
+        if end > datetime.now():
+            end = datetime.now() - timedelta(days=1)
+        # Download stock data
         df = yf.download(ticker, start=start, end=end)
+        # Fallback if data is empty
+        if df.empty:
+            df = yf.download(ticker, period="1y")
         return df
 
     data = load_data(selected_ticker, start_date, end_date)
@@ -52,7 +59,7 @@ with tabs[0]:
         st.markdown("#### Descriptive Statistics")
         st.dataframe(data.describe())
     else:
-        st.warning("No data found for this date range.")
+        st.warning("No stock data available.")
 
 # ------------------------------
 # 2️⃣ FINANCIAL STATEMENTS TAB
