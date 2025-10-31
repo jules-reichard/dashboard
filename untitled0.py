@@ -273,3 +273,4 @@ with tabs[2]:
         st.caption("News source: CNBC RSS Feed")
     else:
         st.warning("Could not fetch news headlines for sentiment analysis.")
+
