@@ -33,7 +33,7 @@ tabs = st.tabs(["📈 Stock Prices", "💰 Financial Statements", "📰 Sentimen
 # 1️⃣ STOCK PRICE TAB
 # ------------------------------
 with tabs[0]:
-    st.subheader("Comparative Stock Performance") # Changed title
+    st.subheader("Comparative Stock Performance")
 
     # --- Date pickers moved from sidebar to this tab ---
     st.markdown("Select Date Range:")
@@ -44,11 +44,24 @@ with tabs[0]:
         end_date = st.date_input("End Date", end_date_default)
     # --- End of moved date pickers ---
 
+    # --- Add Ticker Selector ---
+    # tickers list is defined in the sidebar section
+    selected_tickers_chart = st.multiselect(
+        "Select Stocks to Compare",
+        options=tickers,
+        default=tickers  # Default to all tickers
+    )
+    # --- End of Ticker Selector ---
+
     @st.cache_data
-    def load_all_data(start, end): # Changed function name
+    def load_all_data(tickers_to_load, start, end): # Modified function signature
         """
-        Loads data for all tickers in the global 'tickers' list.
+        Loads data for all tickers passed in the 'tickers_to_load' list.
         """
+        if not tickers_to_load:
+             # Don't show a warning if the user just hasn't selected anything yet
+             return pd.DataFrame() # Return empty if no tickers are selected
+             
         # Ensure start date is before end date
         if start > end:
             st.error("Error: Start date must be before end date.")
@@ -60,8 +73,7 @@ with tabs[0]:
         
         # Download stock data for all tickers
         try:
-            # tickers list is defined in the sidebar section
-            df = yf.download(tickers, start=start, end=end + timedelta(days=1)) # Add 1 day to end to include it
+            df = yf.download(tickers_to_load, start=start, end=end + timedelta(days=1)) # Use passed list
         except Exception as e:
             st.error(f"Error downloading data: {e}")
             return pd.DataFrame()
@@ -69,67 +81,81 @@ with tabs[0]:
         # Fallback if data is empty for the selected range
         if df.empty and (start != start_date_default or end != end_date_default):
             st.warning("No data found for the selected date range. Fetching last 1 year of data as fallback.")
-            df = yf.download(tickers, period="1y")
+            df = yf.download(tickers_to_load, period="1y") # Use passed list
             
         return df
 
-    all_data = load_all_data(start_date, end_date) # Updated function call
+    # Check if tickers are selected before loading
+    if selected_tickers_chart:
+        all_data = load_all_data(selected_tickers_chart, start_date, end_date) # Updated function call
 
-    if not all_data.empty:
-        # Get just the 'Close' prices
-        close_data = all_data['Close']
-        
-        # Melt the dataframe to long format for Plotly Express
-        # This makes it easy to plot multiple lines
-        df_to_plot = close_data.reset_index().melt(id_vars='Date', value_name='Price', var_name='Ticker')
+        if not all_data.empty:
+            
+            # --- Handle single vs. multiple tickers for 'Close' data ---
+            if len(selected_tickers_chart) == 1:
+                # If only one ticker, 'Close' is a Series. Convert to DataFrame.
+                close_data = all_data[['Close']]
+                close_data.columns = [selected_tickers_chart[0]] # Name the column correctly
+            else:
+                # If multiple tickers, 'Close' is already a DataFrame
+                close_data = all_data['Close']
+            # --- End of handle ---
 
-        # Plotly chart
-        fig = px.line(
-            df_to_plot,
-            x='Date',
-            y='Price',
-            color='Ticker', # Creates a different line for each Ticker
-            title='Closing Prices Comparison'
-        )
-        
-        fig.update_layout(
-            xaxis_title="Date",
-            yaxis_title="Price (USD)",
-            template="plotly_white",
-            height=500
-        )
-        st.plotly_chart(fig, use_container_width=True)
+            # Melt the dataframe to long format for Plotly Express
+            # This makes it easy to plot multiple lines
+            df_to_plot = close_data.reset_index().melt(id_vars='Date', value_name='Price', var_name='Ticker')
 
-        # Descriptive Statistics
-        st.markdown("#### Descriptive Statistics (Close Prices)")
-        st.dataframe(close_data.describe()) # Describe only the close prices
-        
-        # --- Annualized Metrics ---
-        st.markdown("#### Annualized Metrics")
-        
-        # Calculate daily returns (for volatility)
-        daily_returns = close_data.pct_change()
-        
-        N = 252  # Number of trading days in a year
-        
-        # --- Reverted to Annualized Return Calculation (Arithmetic Mean) ---
-        annualized_returns = daily_returns.mean().apply(lambda x: ((1 + x)**N - 1) * 100)
-        # --- End of Reverted Calculation ---
-        
-        # Calculate annualized volatility (standard formula)
-        annualized_vol = daily_returns.std() * np.sqrt(N) * 100
-        
-        # Combine into a DataFrame
-        annual_stats_df = pd.DataFrame({
-            'Annualized Return': annualized_returns,
-            'Annualized Volatility': annualized_vol
-        })
-        
-        # Display as formatted percentages
-        st.dataframe(annual_stats_df.style.format("{:.2f}%"))
+            # Plotly chart
+            fig = px.line(
+                df_to_plot,
+                x='Date',
+                y='Price',
+                color='Ticker', # Creates a different line for each Ticker
+                title='Closing Prices Comparison'
+            )
+            
+            fig.update_layout(
+                xaxis_title="Date",
+                yaxis_title="Price (USD)",
+                template="plotly_white",
+                height=500
+            )
+            st.plotly_chart(fig, use_container_width=True)
 
+            # Descriptive Statistics
+            st.markdown("#### Descriptive Statistics (Close Prices)")
+            st.dataframe(close_data.describe()) # Describe only the close prices
+            
+            # --- Annualized Metrics ---
+            st.markdown("#### Annualized Metrics")
+            
+            # Calculate daily returns (for volatility)
+            daily_returns = close_data.pct_change()
+            
+            N = 252  # Number of trading days in a year
+            
+            # --- Reverted to Annualized Return Calculation (Arithmetic Mean) ---
+            annualized_returns = daily_returns.mean().apply(lambda x: ((1 + x)**N - 1) * 100)
+            # --- End of Reverted Calculation ---
+            
+            # Calculate annualized volatility (standard formula)
+            annualized_vol = daily_returns.std() * np.sqrt(N) * 100
+            
+            # Combine into a DataFrame
+            annual_stats_df = pd.DataFrame({
+                'Annualized Return': annualized_returns,
+                'Annualized Volatility': annualized_vol
+            })
+            
+            # Display as formatted percentages
+            st.dataframe(annual_stats_df.style.format("{:.2f}%"))
+
+        else:
+            if selected_tickers_chart: # Only show this if tickers were selected but no data came back
+                st.warning("No stock data available to display for the selected tickers/date range.")
     else:
-        st.warning("No stock data available to display.")
+        # This message shows if the multiselect box is empty
+        st.info("Select one or more tickers above to see the comparison chart and metrics.")
 
 
 # ------------------------------
