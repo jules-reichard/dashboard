@@ -26,9 +26,6 @@ selected_ticker = st.sidebar.selectbox("Select Company (for Financials)", ticker
 start_date_default = datetime.now() - timedelta(days=365)
 end_date_default = datetime.now()
 
-start_date = st.sidebar.date_input("Start Date", start_date_default)
-end_date = st.sidebar.date_input("End Date", end_date_default)
-
 # Create tabs
 tabs = st.tabs(["📈 Stock Prices", "💰 Financial Statements", "📰 Sentiment Analysis"])
 
@@ -37,6 +34,15 @@ tabs = st.tabs(["📈 Stock Prices", "💰 Financial Statements", "📰 Sentimen
 # ------------------------------
 with tabs[0]:
     st.subheader("Comparative Stock Performance") # Changed title
+
+    # --- Date pickers moved from sidebar to this tab ---
+    st.markdown("Select Date Range:")
+    col1, col2 = st.columns(2)
+    with col1:
+        start_date = st.date_input("Start Date", start_date_default)
+    with col2:
+        end_date = st.date_input("End Date", end_date_default)
+    # --- End of moved date pickers ---
 
     @st.cache_data
     def load_all_data(start, end): # Changed function name
