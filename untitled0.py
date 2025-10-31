@@ -1,12 +1,14 @@
 import streamlit as st
 import pandas as pd
-import numpy as np  # Added for calculations
+import numpy as np
 import plotly.graph_objects as go
-import plotly.express as px  # Added for the pie chart
+import plotly.express as px
 import yfinance as yf
 import feedparser
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from datetime import datetime, timedelta
+import os
+import json
 
 # ------------------------------
 # Page setup
@@ -73,13 +75,14 @@ with tabs[0]:
         
         # Download stock data for all tickers
         try:
-            df = yf.download(tickers_to_load, start=start, end=end + timedelta(days=1)) # Use passed list
+            # yfinance downloads up to (but not including) end date
+            df = yf.download(tickers_to_load, start=start, end=end + timedelta(days=1)) 
         except Exception as e:
             st.error(f"Error downloading data: {e}")
             return pd.DataFrame()
             
         # Fallback if data is empty for the selected range
-        if df.empty and (start != start_date_default or end != end_date_default):
+        if df.empty and (start.date() != start_date_default.date() or end.date() != end_date_default.date()):
             st.warning("No data found for the selected date range. Fetching last 1 year of data as fallback.")
             df = yf.download(tickers_to_load, period="1y") # Use passed list
             
@@ -100,6 +103,9 @@ with tabs[0]:
                 # If multiple tickers, 'Close' is already a DataFrame
                 close_data = all_data['Close']
             # --- End of handle ---
+            
+            # Drop rows with any NaN values (e.g., holidays) before plotting
+            close_data = close_data.dropna()
 
             # Melt the dataframe to long format for Plotly Express
             # This makes it easy to plot multiple lines
@@ -130,11 +136,11 @@ with tabs[0]:
             st.markdown("#### Annualized Metrics")
             
             # Calculate daily returns (for volatility)
-            daily_returns = close_data.pct_change()
+            daily_returns = close_data.pct_change().dropna()
             
             N = 252  # Number of trading days in a year
             
-            # --- Reverted to Annualized Return Calculation (Arithmetic Mean) ---
+            # --- Annualized Return Calculation (Arithmetic Mean) ---
             annualized_returns = daily_returns.mean().apply(lambda x: ((1 + x)**N - 1) * 100)
             # --- End of Reverted Calculation ---
             
@@ -322,65 +328,135 @@ with tabs[1]:
 # ------------------------------
 # 3️⃣ SENTIMENT ANALYSIS TAB
 # ------------------------------
+
+# --- Sentiment History Functions ---
+HISTORY_FILE = "sentiment_history.json"
+
+@st.cache_data(ttl=3600) # Cache the feed fetch for 1 hour
+def fetch_cnbc_headlines():
+    url = "https://www.cnbc.com/id/100003114/device/rss/rss.html"
+    try:
+        feed = feedparser.parse(url)
+        headlines = pd.DataFrame({
+            "Title": [entry.title for entry in feed.entries[:15]],
+            "Link": [entry.link for entry in feed.entries[:15]]
+        })
+        return headlines
+    except Exception as e:
+        st.error(f"Error fetching RSS feed: {e}")
+        return pd.DataFrame()
+
+def load_sentiment_history():
+    """Loads sentiment history from the JSON file."""
+    if os.path.exists(HISTORY_FILE):
+        try:
+            with open(HISTORY_FILE, 'r') as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            return []
+    return []
+
+def save_sentiment_history(history):
+    """Saves the updated sentiment history to the JSON file."""
+    try:
+        with open(HISTORY_FILE, 'w') as f:
+            json.dump(history, f, indent=4)
+    except IOError as e:
+        st.error(f"Error saving sentiment history: {e}")
+
+def get_current_sentiment(headlines_df):
+    """Calculates the current average sentiment from headlines."""
+    if headlines_df.empty:
+        return None, None
+        
+    analyzer = SentimentIntensityAnalyzer()
+    headlines_df["Sentiment Score"] = headlines_df["Title"].apply(lambda x: analyzer.polarity_scores(x)["compound"])
+    headlines_df["Sentiment"] = headlines_df["Sentiment Score"].apply(lambda x:
+                                                                "Positive" if x > 0.2 else
+                                                                "Negative" if x < -0.2 else
+                                                                "Neutral")
+    avg_sentiment = headlines_df["Sentiment Score"].mean()
+    return avg_sentiment, headlines_df
+
+# --- End Sentiment History Functions ---
+
+
 with tabs[2]:
     st.subheader("📰 Market Sentiment (CNBC News)")
 
-    @st.cache_data
-    def fetch_cnbc_headlines():
-        url = "https://www.cnbc.com/id/100003114/device/rss/rss.html"
-        try:
-            feed = feedparser.parse(url)
-            headlines = pd.DataFrame({
-                "Title": [entry.title for entry in feed.entries[:15]],
-                "Link": [entry.link for entry in feed.entries[:15]]
-            })
-            return headlines
-        except Exception as e:
-            st.error(f"Error fetching RSS feed: {e}")
-            return pd.DataFrame()
-
     headlines = fetch_cnbc_headlines()
-
+    
     if not headlines.empty:
-        analyzer = SentimentIntensityAnalyzer()
-
-        headlines["Sentiment Score"] = headlines["Title"].apply(lambda x: analyzer.polarity_scores(x)["compound"])
-        headlines["Sentiment"] = headlines["Sentiment Score"].apply(lambda x:
-                                                                    "Positive" if x > 0.2 else
-                                                                    "Negative" if x < -0.2 else
-                                                                    "Neutral")
-
-        avg_sentiment = headlines["Sentiment Score"].mean()
-
-        st.metric("Average Sentiment (Recent CNBC Headlines)", f"{avg_sentiment:.2f}")
-
-        # --- Added Pie Chart ---
-        sentiment_counts = headlines["Sentiment"].value_counts().reset_index(name='Count')
+        current_avg_sentiment, headlines_with_sentiment = get_current_sentiment(headlines)
         
-        fig_pie = px.pie(
-            sentiment_counts, 
-            names='Sentiment', 
-            values='Count', 
-            title='Sentiment Distribution',
-            color='Sentiment',
-            color_discrete_map={
-                'Positive': 'seagreen', 
-                'Negative': 'tomato', 
-                'Neutral': 'silver'
-            }
-        )
-        st.plotly_chart(fig_pie, use_container_width=True)
-        
-        # --- End of Added Pie Chart ---
+        if current_avg_sentiment is not None:
+            st.metric("Average Sentiment (Recent CNBC Headlines)", f"{current_avg_sentiment:.2f}")
 
-        # Display DataFrame with clickable links
-        st.dataframe(
-            headlines[["Title", "Sentiment", "Sentiment Score", "Link"]],
-            column_config={
-                "Link": st.column_config.LinkColumn("Article Link", display_text="Read Article")
-            }
-        )
-        st.caption("News source: CNBC RSS Feed")
+            # --- Historical Sentiment Logic ---
+            sentiment_history = load_sentiment_history()
+            
+            # Get today's date as a string
+            today_str = datetime.now().strftime('%Y-%m-%d')
+            
+            # Check if we already saved today's score
+            today_score_exists = any(entry['Date'] == today_str for entry in sentiment_history)
+            
+            if not today_score_exists:
+                # Add the new score and timestamp
+                new_entry = {
+                    "Date": today_str,
+                    "Timestamp": datetime.now().isoformat(),
+                    "Score": current_avg_sentiment
+                }
+                sentiment_history.append(new_entry)
+                save_sentiment_history(sentiment_history)
+            
+            # --- Display Historical Sentiment Chart ---
+            if sentiment_history:
+                history_df = pd.DataFrame(sentiment_history)
+                history_df['Date'] = pd.to_datetime(history_df['Date'])
+                history_df = history_df.sort_values(by='Date')
+                
+                fig_history = px.line(
+                    history_df,
+                    x='Date',
+                    y='Score',
+                    title='Historical Sentiment Trend (Updated Daily)',
+                    markers=True
+                )
+                fig_history.update_layout(yaxis_title='Average Sentiment Score')
+                st.plotly_chart(fig_history, use_container_width=True)
+            # --- End Historical Chart ---
+
+            # --- Added Pie Chart ---
+            sentiment_counts = headlines_with_sentiment["Sentiment"].value_counts().reset_index(name='Count')
+            
+            fig_pie = px.pie(
+                sentiment_counts, 
+                names='Sentiment', 
+                values='Count', 
+                title='Recent Sentiment Distribution',
+                color='Sentiment',
+                color_discrete_map={
+                    'Positive': 'seagreen', 
+                    'Negative': 'tomato', 
+                    'Neutral': 'silver'
+                }
+            )
+            st.plotly_chart(fig_pie, use_container_width=True)
+            
+            # --- End of Added Pie Chart ---
+
+            # Display DataFrame with clickable links
+            st.dataframe(
+                headlines_with_sentiment[["Title", "Sentiment", "Sentiment Score", "Link"]],
+                column_config={
+                    "Link": st.column_config.LinkColumn("Article Link", display_text="Read Article")
+                }
+            )
+            st.caption("News source: CNBC RSS Feed")
+        else:
+            st.warning("Could not calculate sentiment.")
     else:
         st.warning("Could not fetch news headlines for sentiment analysis.")
 
