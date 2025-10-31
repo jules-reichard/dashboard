@@ -18,7 +18,8 @@ st.title("📊 Market Intelligence Dashboard")
 # ------------------------------
 st.sidebar.header("Controls")
 tickers = ["AAPL", "MSFT", "TSLA", "GOOGL", "IBM"]
-selected_ticker = st.sidebar.selectbox("Select Company", tickers)
+# This selection is for the Financial Statements tab
+selected_ticker = st.sidebar.selectbox("Select Company (for Financials)", tickers)
 
 # Set default date range
 start_date_default = datetime.now() - timedelta(days=365)
@@ -34,10 +35,13 @@ tabs = st.tabs(["📈 Stock Prices", "💰 Financial Statements", "📰 Sentimen
 # 1️⃣ STOCK PRICE TAB
 # ------------------------------
 with tabs[0]:
-    st.subheader(f"{selected_ticker} Stock Performance")
+    st.subheader("Comparative Stock Performance") # Changed title
 
     @st.cache_data
-    def load_data(ticker, start, end):
+    def load_all_data(start, end): # Changed function name
+        """
+        Loads data for all tickers in the global 'tickers' list.
+        """
         # Ensure start date is before end date
         if start > end:
             st.error("Error: Start date must be before end date.")
@@ -47,9 +51,10 @@ with tabs[0]:
         if end > datetime.now().date():
             end = datetime.now().date() - timedelta(days=1)
         
-        # Download stock data
+        # Download stock data for all tickers
         try:
-            df = yf.download(ticker, start=start, end=end + timedelta(days=1)) # Add 1 day to end to include it
+            # tickers list is defined in the sidebar section
+            df = yf.download(tickers, start=start, end=end + timedelta(days=1)) # Add 1 day to end to include it
         except Exception as e:
             st.error(f"Error downloading data: {e}")
             return pd.DataFrame()
@@ -57,19 +62,30 @@ with tabs[0]:
         # Fallback if data is empty for the selected range
         if df.empty and (start != start_date_default or end != end_date_default):
             st.warning("No data found for the selected date range. Fetching last 1 year of data as fallback.")
-            df = yf.download(ticker, period="1y")
+            df = yf.download(tickers, period="1y")
             
         return df
 
-    data = load_data(selected_ticker, start_date, end_date)
+    all_data = load_all_data(start_date, end_date) # Updated function call
 
-    if not data.empty:
+    if not all_data.empty:
+        # Get just the 'Close' prices
+        close_data = all_data['Close']
+        
+        # Melt the dataframe to long format for Plotly Express
+        # This makes it easy to plot multiple lines
+        df_to_plot = close_data.reset_index().melt(id_vars='Date', value_name='Price', var_name='Ticker')
+
         # Plotly chart
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=data.index, y=data['Close'], mode='lines', name='Close', line=dict(color='dodgerblue')))
+        fig = px.line(
+            df_to_plot,
+            x='Date',
+            y='Price',
+            color='Ticker', # Creates a different line for each Ticker
+            title='Closing Prices Comparison'
+        )
         
         fig.update_layout(
-            title=f"{selected_ticker} Closing Prices",
             xaxis_title="Date",
             yaxis_title="Price (USD)",
             template="plotly_white",
@@ -78,10 +94,11 @@ with tabs[0]:
         st.plotly_chart(fig, use_container_width=True)
 
         # Descriptive Statistics
-        st.markdown("#### Descriptive Statistics")
-        st.dataframe(data.describe())
+        st.markdown("#### Descriptive Statistics (Close Prices)")
+        st.dataframe(close_data.describe()) # Describe only the close prices
     else:
         st.warning("No stock data available to display.")
+
 
 # ------------------------------
 # 2️⃣ FINANCIAL STATEMENTS TAB
@@ -221,5 +238,3 @@ with tabs[2]:
         st.caption("News source: CNBC RSS Feed")
     else:
         st.warning("Could not fetch news headlines for sentiment analysis.")
-
-
