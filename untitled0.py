@@ -94,26 +94,37 @@ with tabs[1]:
         stock = yf.Ticker(ticker)
         return stock.income_stmt, stock.balance_sheet, stock.cashflow
 
-    # Helper function to add % change columns
-    def add_pct_change(df):
+    # Helper function to add % change columns and format in thousands
+    def format_financials_df(df):
+        """
+        Formats the financial statement dataframe to show values in thousands (k)
+        and adds year-over-year percentage change columns.
+        """
         if df.empty:
-            return df
-        # Calculate pct_change (year-over-year)
+            return df, {}
+        
         # yfinance columns are descending, so periods=-1 compares to the previous year (next column)
         df_pct = df.pct_change(axis=1, periods=-1)
         
         # Create a new dataframe to hold interleaved columns
         combined_df = pd.DataFrame()
+        formatter = {}
         
         for col in df.columns:
-            col_name = col.strftime('%Y-%m-%d')
+            col_name_date = col.strftime('%Y-%m-%d')
             pct_col_name = f"{col.year} % Chg"
             
-            combined_df[col_name] = df[col]
+            # Divide value columns by 1000 for 'k' format
+            combined_df[col_name_date] = df[col] / 1000
+            # Format as thousands with 'k' suffix
+            formatter[col_name_date] = lambda x: f'{x:,.0f}k' if pd.notna(x) else '-' 
+            
             if col in df_pct.columns:
                 combined_df[pct_col_name] = df_pct[col]
+                formatter[pct_col_name] = '{:,.2%}' # Format as percentage
                 
-        return combined_df
+        return combined_df, formatter
+
 
     try:
         IS, BS, CF = get_financials(selected_ticker)
@@ -121,24 +132,24 @@ with tabs[1]:
         # --- Income Statement ---
         st.markdown("### 🧾 Income Statement")
         if not IS.empty:
-            is_display = add_pct_change(IS)
-            st.dataframe(is_display.style.format(na_rep='-', formatter={col: '{:,.2%}' for col in is_display.columns if '% Chg' in str(col)}))
+            is_display, is_formatter = format_financials_df(IS)
+            st.dataframe(is_display.style.format(na_rep='-', formatter=is_formatter))
         else:
             st.warning("No Income Statement data available.")
 
         # --- Balance Sheet ---
         st.markdown("### 📋 Balance Sheet")
         if not BS.empty:
-            bs_display = add_pct_change(BS)
-            st.dataframe(bs_display.style.format(na_rep='-', formatter={col: '{:,.2%}' for col in bs_display.columns if '% Chg' in str(col)}))
+            bs_display, bs_formatter = format_financials_df(BS)
+            st.dataframe(bs_display.style.format(na_rep='-', formatter=bs_formatter))
         else:
             st.warning("No Balance Sheet data available.")
 
         # --- Cash Flow Statement ---
         st.markdown("### 💵 Cash Flow Statement")
         if not CF.empty:
-            cf_display = add_pct_change(CF)
-            st.dataframe(cf_display.style.format(na_rep='-', formatter={col: '{:,.2%}' for col in cf_display.columns if '% Chg' in str(col)}))
+            cf_display, cf_formatter = format_financials_df(CF)
+            st.dataframe(cf_display.style.format(na_rep='-', formatter=cf_formatter))
         else:
             st.warning("No Cash Flow Statement data available.")
 
@@ -210,4 +221,5 @@ with tabs[2]:
         st.caption("News source: CNBC RSS Feed")
     else:
         st.warning("Could not fetch news headlines for sentiment analysis.")
+
 
