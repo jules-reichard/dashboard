@@ -1,10 +1,10 @@
 [theme]
-# Pirate Map Theme - Parchment/Sand colors
-primaryColor = "#8B4513"
+# Professional Parchment Theme
+primaryColor = "#8B7355"
 backgroundColor = "#F5E6C8"
-secondaryBackgroundColor = "#EDD9B4"
-textColor = "#3D2914"
-font = "serif"
+secondaryBackgroundColor = "#E8D9BE"
+textColor = "#4A3F35"
+font = "sans serif"
 
 [server]
 headless = true
