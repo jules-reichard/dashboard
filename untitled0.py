@@ -811,21 +811,40 @@ def apply_custom_css():
             transform: translateY(0);
         }}
         
-        /* Download buttons */
+        /* Download buttons - IMPROVED */
         .stDownloadButton > button {{
-            background: linear-gradient(145deg, #6B5B4A 0%, #4A3F35 100%);
-            color: #FBF6ED !important;
+            background: linear-gradient(145deg, #5D4E37 0%, #4A3F35 100%);
+            color: #FFFEFA !important;
             border: none;
             border-radius: 8px;
-            padding: 0.6rem 1.2rem;
+            padding: 0.75rem 1.5rem;
             font-weight: 600;
+            font-size: 0.9rem;
+            letter-spacing: 0.3px;
             transition: all 0.3s ease;
-            box-shadow: 0 3px 10px rgba(74, 55, 40, 0.15);
+            box-shadow: 0 3px 10px rgba(74, 55, 40, 0.2);
+            min-width: 200px;
+            white-space: nowrap;
         }}
         
         .stDownloadButton > button:hover {{
-            background: linear-gradient(145deg, #7A6B5A 0%, #5D4E37 100%);
-            transform: translateY(-1px);
+            background: linear-gradient(145deg, #6B5B4A 0%, #5D4E37 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(74, 55, 40, 0.25);
+        }}
+        
+        .stDownloadButton > button:active {{
+            transform: translateY(0);
+        }}
+        
+        /* Fix text visibility inside download button */
+        .stDownloadButton > button span {{
+            color: #FFFEFA !important;
+        }}
+        
+        .stDownloadButton > button p {{
+            color: #FFFEFA !important;
+            margin: 0;
         }}
         
         /* ============================================
