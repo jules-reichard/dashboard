@@ -988,6 +988,218 @@ def apply_custom_css():
         ::-webkit-scrollbar-thumb:hover {{
             background: #8B7355;
         }}
+        
+        /* ============================================
+           RESPONSIVE DESIGN - TABLET (768px - 1024px)
+           ============================================ */
+        
+        @media screen and (max-width: 1024px) {{
+            /* Main container */
+            .main .block-container {{
+                padding-left: 1rem;
+                padding-right: 1rem;
+                max-width: 100%;
+            }}
+            
+            /* Title */
+            h1 {{
+                font-size: 1.8rem !important;
+            }}
+            
+            h2 {{
+                font-size: 1.3rem !important;
+            }}
+            
+            /* Metric cards */
+            [data-testid="stMetric"] {{
+                padding: 1rem;
+            }}
+            
+            [data-testid="stMetric"] [data-testid="stMetricValue"] {{
+                font-size: 1.5rem !important;
+            }}
+            
+            [data-testid="stMetric"] label {{
+                font-size: 0.75rem !important;
+            }}
+            
+            /* Buttons */
+            .stDownloadButton > button {{
+                min-width: 160px;
+                padding: 0.6rem 1rem;
+                font-size: 0.85rem;
+            }}
+            
+            .stButton > button {{
+                padding: 0.5rem 1rem;
+                font-size: 0.85rem;
+            }}
+        }}
+        
+        /* ============================================
+           RESPONSIVE DESIGN - MOBILE (< 768px)
+           ============================================ */
+        
+        @media screen and (max-width: 768px) {{
+            /* Hide sidebar by default on mobile */
+            [data-testid="stSidebar"] {{
+                min-width: 0 !important;
+                width: 100% !important;
+            }}
+            
+            /* Main container */
+            .main .block-container {{
+                padding-left: 0.5rem;
+                padding-right: 0.5rem;
+                padding-top: 1rem;
+            }}
+            
+            /* Typography */
+            h1 {{
+                font-size: 1.5rem !important;
+                padding-bottom: 0.3rem;
+                margin-bottom: 1rem !important;
+            }}
+            
+            h2 {{
+                font-size: 1.15rem !important;
+                padding-left: 0.4rem;
+                border-left-width: 3px;
+            }}
+            
+            h3 {{
+                font-size: 0.95rem !important;
+            }}
+            
+            /* Metric cards - stack nicely */
+            [data-testid="stMetric"] {{
+                padding: 0.8rem 1rem;
+                border-radius: 10px;
+                margin-bottom: 0.5rem;
+            }}
+            
+            [data-testid="stMetric"] [data-testid="stMetricValue"] {{
+                font-size: 1.3rem !important;
+            }}
+            
+            [data-testid="stMetric"] label {{
+                font-size: 0.7rem !important;
+                letter-spacing: 0.3px;
+            }}
+            
+            /* Buttons - full width on mobile */
+            .stButton > button {{
+                width: 100%;
+                padding: 0.7rem 1rem;
+                font-size: 0.9rem;
+            }}
+            
+            .stDownloadButton > button {{
+                width: 100%;
+                min-width: unset;
+                padding: 0.7rem 1rem;
+                font-size: 0.85rem;
+                margin-bottom: 0.5rem;
+            }}
+            
+            /* Expanders */
+            [data-testid="stExpander"] summary {{
+                padding: 0.8rem 1rem;
+                font-size: 0.9rem;
+            }}
+            
+            /* Charts container */
+            [data-testid="stPlotlyChart"] {{
+                padding: 0.5rem;
+                border-radius: 10px;
+            }}
+            
+            /* Selectbox */
+            [data-testid="stSelectbox"] > div > div {{
+                font-size: 0.9rem;
+            }}
+            
+            /* Dividers */
+            hr {{
+                margin: 1.5rem 0;
+            }}
+            
+            /* News section - single column */
+            [data-testid="stHorizontalBlock"] {{
+                flex-direction: column;
+            }}
+            
+            /* Correlation interpretation text */
+            .stMarkdown {{
+                font-size: 0.9rem;
+            }}
+        }}
+        
+        /* ============================================
+           RESPONSIVE DESIGN - SMALL MOBILE (< 480px)
+           ============================================ */
+        
+        @media screen and (max-width: 480px) {{
+            /* Even smaller adjustments */
+            h1 {{
+                font-size: 1.3rem !important;
+            }}
+            
+            h2 {{
+                font-size: 1.05rem !important;
+            }}
+            
+            [data-testid="stMetric"] {{
+                padding: 0.6rem 0.8rem;
+            }}
+            
+            [data-testid="stMetric"] [data-testid="stMetricValue"] {{
+                font-size: 1.1rem !important;
+            }}
+            
+            [data-testid="stMetric"] label {{
+                font-size: 0.65rem !important;
+            }}
+            
+            /* Sidebar adjustments */
+            [data-testid="stSidebar"] h2 {{
+                font-size: 1rem !important;
+            }}
+            
+            [data-testid="stSidebar"] h3 {{
+                font-size: 0.8rem !important;
+            }}
+        }}
+        
+        /* ============================================
+           TOUCH-FRIENDLY IMPROVEMENTS
+           ============================================ */
+        
+        @media (hover: none) and (pointer: coarse) {{
+            /* Larger touch targets */
+            .stButton > button,
+            .stDownloadButton > button {{
+                min-height: 48px;
+            }}
+            
+            [data-testid="stCheckbox"] {{
+                padding: 0.5rem 0;
+            }}
+            
+            [data-testid="stCheckbox"] label {{
+                font-size: 1rem !important;
+            }}
+            
+            /* Remove hover effects on touch devices */
+            [data-testid="stMetric"]:hover {{
+                transform: none;
+            }}
+            
+            .stButton > button:hover,
+            .stDownloadButton > button:hover {{
+                transform: none;
+            }}
+        }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -1305,15 +1517,21 @@ fig_main.update_layout(
     yaxis_title=y_label,
     legend_title=t("asset"),
     hovermode="x unified",
-    height=500,
+    height=450,
+    margin=dict(l=20, r=20, t=60, b=40),
     paper_bgcolor='rgba(0,0,0,0)',
     plot_bgcolor='rgba(255,254,250,0.5)',
     font=dict(family="Source Sans Pro, sans-serif", color='#4A3F35', size=12),
-    title_font=dict(family="Libre Baskerville, serif", color='#4A3728', size=18),
+    title_font=dict(family="Libre Baskerville, serif", color='#4A3728', size=16),
     legend=dict(
         bgcolor='rgba(255,254,250,0.8)',
         bordercolor='#D4C5A9',
-        borderwidth=1
+        borderwidth=1,
+        orientation="h",
+        yanchor="bottom",
+        y=1.02,
+        xanchor="center",
+        x=0.5
     ),
     xaxis=dict(gridcolor='#E8DCC8', linecolor='#C4B59B'),
     yaxis=dict(gridcolor='#E8DCC8', linecolor='#C4B59B')
@@ -1360,15 +1578,21 @@ if show_drawdown:
         yaxis_title="Drawdown (%)",
         template='plotly_white',
         hovermode="x unified",
-        height=400,
+        height=350,
+        margin=dict(l=20, r=20, t=50, b=40),
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(255,254,250,0.5)',
         font=dict(family="Source Sans Pro, sans-serif", color='#4A3F35', size=12),
-        title_font=dict(family="Libre Baskerville, serif", color='#4A3728', size=16),
+        title_font=dict(family="Libre Baskerville, serif", color='#4A3728', size=14),
         legend=dict(
             bgcolor='rgba(255,254,250,0.8)',
             bordercolor='#D4C5A9',
-            borderwidth=1
+            borderwidth=1,
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="center",
+            x=0.5
         ),
         xaxis=dict(gridcolor='#E8DCC8', linecolor='#C4B59B'),
         yaxis=dict(gridcolor='#E8DCC8', linecolor='#C4B59B')
@@ -1408,9 +1632,10 @@ if show_volume:
     )
     
     fig_vol.update_layout(
-        height=500,
+        height=400,
         template='plotly_white',
         showlegend=False,
+        margin=dict(l=20, r=20, t=40, b=40),
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(255,254,250,0.5)',
         font=dict(family="Source Sans Pro, sans-serif", color='#4A3F35', size=12)
