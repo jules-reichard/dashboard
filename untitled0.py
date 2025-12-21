@@ -790,25 +790,38 @@ def apply_custom_css():
            ============================================ */
         
         .stButton > button {{
-            background: linear-gradient(145deg, #7A6347 0%, #5D4A36 100%);
-            color: #FBF6ED !important;
-            border: none;
-            border-radius: 8px;
-            padding: 0.6rem 1.5rem;
+            background: linear-gradient(145deg, #FFFEFA 0%, #F5EFE0 100%);
+            color: #4A3F35 !important;
+            border: 2px solid #B8A88A;
+            border-radius: 10px;
+            padding: 0.7rem 1.5rem;
             font-weight: 600;
-            letter-spacing: 0.5px;
+            font-size: 0.9rem;
+            letter-spacing: 0.3px;
             transition: all 0.3s ease;
-            box-shadow: 0 3px 10px rgba(74, 55, 40, 0.2);
+            box-shadow: 0 2px 8px rgba(74, 55, 40, 0.1);
         }}
         
         .stButton > button:hover {{
-            background: linear-gradient(145deg, #8B7355 0%, #6B5344 100%);
+            background: linear-gradient(145deg, #F5EFE0 0%, #EDE5D3 100%);
+            border-color: #8B7355;
             transform: translateY(-1px);
-            box-shadow: 0 5px 15px rgba(74, 55, 40, 0.25);
+            box-shadow: 0 4px 12px rgba(74, 55, 40, 0.15);
         }}
         
         .stButton > button:active {{
             transform: translateY(0);
+            box-shadow: 0 1px 4px rgba(74, 55, 40, 0.1);
+        }}
+        
+        /* Button text and icon */
+        .stButton > button span {{
+            color: #4A3F35 !important;
+        }}
+        
+        .stButton > button p {{
+            color: #4A3F35 !important;
+            margin: 0;
         }}
         
         /* Download buttons - IMPROVED */
