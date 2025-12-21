@@ -566,27 +566,141 @@ if "language" not in st.session_state:
 
 
 # =============================================================================
-# CUSTOM CSS
+# CUSTOM CSS - PIRATE MAP THEME
 # =============================================================================
 def apply_custom_css():
-    """Apply custom CSS including RTL support."""
+    """Apply custom CSS including RTL support and pirate map theme."""
     is_rtl = st.session_state.language in RTL_LANGUAGES
     direction = "rtl" if is_rtl else "ltr"
     text_align = "right" if is_rtl else "left"
     
     st.markdown(f"""
     <style>
-        .stMetric {{
-            background-color: #f0f2f6;
-            padding: 15px;
-            border-radius: 10px;
+        /* Main background - parchment/sand color */
+        .stApp {{
+            background-color: #F5E6C8;
         }}
-        .stMetric:hover {{
-            background-color: #e0e2e6;
+        
+        /* Metric cards - cream/ivory with brown border */
+        [data-testid="stMetric"] {{
+            background-color: #FDF8E8;
+            padding: 20px;
+            border-radius: 12px;
+            border: 2px solid #C4A574;
+            box-shadow: 3px 3px 8px rgba(61, 41, 20, 0.15);
         }}
+        
+        [data-testid="stMetric"]:hover {{
+            background-color: #FFF9E6;
+            border-color: #8B4513;
+            box-shadow: 4px 4px 12px rgba(61, 41, 20, 0.25);
+        }}
+        
+        /* Metric label - dark brown, readable */
+        [data-testid="stMetric"] label {{
+            color: #5D4023 !important;
+            font-weight: 600 !important;
+            font-size: 0.95rem !important;
+        }}
+        
+        /* Metric value - dark brown */
+        [data-testid="stMetric"] [data-testid="stMetricValue"] {{
+            color: #3D2914 !important;
+            font-weight: 700 !important;
+        }}
+        
+        /* Metric delta - keep green/red for positive/negative */
+        [data-testid="stMetric"] [data-testid="stMetricDelta"] svg {{
+            stroke: #2E7D32;
+        }}
+        
+        /* Sidebar - slightly darker parchment */
+        [data-testid="stSidebar"] {{
+            background-color: #EDD9B4;
+            border-right: 3px solid #C4A574;
+        }}
+        
+        [data-testid="stSidebar"] [data-testid="stMarkdown"] {{
+            color: #3D2914;
+        }}
+        
+        /* Headers - brown color */
+        h1, h2, h3 {{
+            color: #5D3A1A !important;
+        }}
+        
+        /* Expanders - parchment style */
+        [data-testid="stExpander"] {{
+            background-color: #FDF8E8;
+            border: 1px solid #C4A574;
+            border-radius: 8px;
+        }}
+        
+        /* Buttons - brown theme */
+        .stButton > button {{
+            background-color: #8B4513;
+            color: #FDF8E8;
+            border: none;
+            border-radius: 8px;
+        }}
+        
+        .stButton > button:hover {{
+            background-color: #A0522D;
+            color: #FFFFFF;
+        }}
+        
+        /* Download buttons */
+        .stDownloadButton > button {{
+            background-color: #6B4423;
+            color: #FDF8E8;
+            border: 2px solid #8B4513;
+        }}
+        
+        .stDownloadButton > button:hover {{
+            background-color: #8B4513;
+        }}
+        
+        /* Selectbox and inputs */
+        [data-testid="stSelectbox"] {{
+            background-color: #FDF8E8;
+        }}
+        
+        /* Checkbox */
+        [data-testid="stCheckbox"] label span {{
+            color: #3D2914 !important;
+        }}
+        
+        /* Info boxes */
+        .stAlert {{
+            background-color: #FDF8E8;
+            border: 1px solid #C4A574;
+        }}
+        
+        /* Markdown text */
+        .stMarkdown {{
+            color: #3D2914;
+        }}
+        
+        /* Captions */
+        .stCaption {{
+            color: #6B5344 !important;
+        }}
+        
+        /* RTL support */
         .main .block-container {{
             direction: {direction};
             text-align: {text_align};
+        }}
+        
+        /* Divider lines */
+        hr {{
+            border-color: #C4A574;
+        }}
+        
+        /* DataFrame/tables */
+        [data-testid="stDataFrame"] {{
+            background-color: #FDF8E8;
+            border-radius: 8px;
         }}
     </style>
     """, unsafe_allow_html=True)
@@ -888,7 +1002,7 @@ df2_plot = df2_plot.rename(columns={'Close': asset2_name})
 merged = pd.merge(df1_plot, df2_plot, on='Date', how='inner')
 merged_melted = merged.melt(id_vars=['Date'], var_name=t('asset'), value_name=t('prices'))
 
-# Create chart
+# Create chart with parchment theme colors
 chart_title = f"{t('normalized_prices') if show_normalized else t('prices')}: {asset1_name} {t('vs')} {asset2_name}"
 fig_main = px.line(
     merged_melted,
@@ -896,7 +1010,7 @@ fig_main = px.line(
     y=t('prices'),
     color=t('asset'),
     title=chart_title,
-    color_discrete_map={asset1_name: '#FF6B6B', asset2_name: '#4ECDC4'},
+    color_discrete_map={asset1_name: '#8B4513', asset2_name: '#2E7D32'},
     template='plotly_white'
 )
 
@@ -905,7 +1019,11 @@ fig_main.update_layout(
     yaxis_title=y_label,
     legend_title=t("asset"),
     hovermode="x unified",
-    height=500
+    height=500,
+    paper_bgcolor='#FDF8E8',
+    plot_bgcolor='#FDF8E8',
+    font=dict(color='#3D2914'),
+    title_font=dict(color='#5D3A1A')
 )
 
 st.plotly_chart(fig_main, use_container_width=True)
@@ -928,8 +1046,8 @@ if show_drawdown:
         y=df1['Drawdown'],
         fill='tozeroy',
         name=asset1_name,
-        line=dict(color='#FF6B6B'),
-        fillcolor='rgba(255, 107, 107, 0.3)'
+        line=dict(color='#8B4513'),
+        fillcolor='rgba(139, 69, 19, 0.3)'
     ))
     
     fig_dd.add_trace(go.Scatter(
@@ -937,8 +1055,8 @@ if show_drawdown:
         y=df2['Drawdown'],
         fill='tozeroy',
         name=asset2_name,
-        line=dict(color='#4ECDC4'),
-        fillcolor='rgba(78, 205, 196, 0.3)'
+        line=dict(color='#2E7D32'),
+        fillcolor='rgba(46, 125, 50, 0.3)'
     ))
     
     fig_dd.update_layout(
@@ -947,7 +1065,11 @@ if show_drawdown:
         yaxis_title="Drawdown (%)",
         template='plotly_white',
         hovermode="x unified",
-        height=400
+        height=400,
+        paper_bgcolor='#FDF8E8',
+        plot_bgcolor='#FDF8E8',
+        font=dict(color='#3D2914'),
+        title_font=dict(color='#5D3A1A')
     )
     
     st.plotly_chart(fig_dd, use_container_width=True)
@@ -973,19 +1095,22 @@ if show_volume:
                             subplot_titles=(f"{t('volume')} {asset1_name}", f"{t('volume')} {asset2_name}"))
     
     fig_vol.add_trace(
-        go.Bar(x=df1['Date'], y=df1['Volume'], name=asset1_name, marker_color='#FF6B6B'),
+        go.Bar(x=df1['Date'], y=df1['Volume'], name=asset1_name, marker_color='#8B4513'),
         row=1, col=1
     )
     
     fig_vol.add_trace(
-        go.Bar(x=df2['Date'], y=df2['Volume'], name=asset2_name, marker_color='#4ECDC4'),
+        go.Bar(x=df2['Date'], y=df2['Volume'], name=asset2_name, marker_color='#2E7D32'),
         row=2, col=1
     )
     
     fig_vol.update_layout(
         height=500,
         template='plotly_white',
-        showlegend=False
+        showlegend=False,
+        paper_bgcolor='#FDF8E8',
+        plot_bgcolor='#FDF8E8',
+        font=dict(color='#3D2914')
     )
     
     st.plotly_chart(fig_vol, use_container_width=True)
@@ -1036,10 +1161,15 @@ with col_corr2:
         title=f"{t('rolling_correlation')} ({window} {t('days')})",
         template='plotly_white'
     )
-    fig_corr.add_hline(y=0, line_dash="dash", line_color="gray")
+    fig_corr.add_hline(y=0, line_dash="dash", line_color="#8B4513")
+    fig_corr.update_traces(line_color='#5D3A1A')
     fig_corr.update_layout(
         yaxis_title=t("overall_correlation"),
-        height=300
+        height=300,
+        paper_bgcolor='#FDF8E8',
+        plot_bgcolor='#FDF8E8',
+        font=dict(color='#3D2914'),
+        title_font=dict(color='#5D3A1A')
     )
     st.plotly_chart(fig_corr, use_container_width=True)
 
