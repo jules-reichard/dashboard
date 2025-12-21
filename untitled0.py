@@ -1637,12 +1637,14 @@ if show_volume:
                             vertical_spacing=0.15)
     
     fig_vol.add_trace(
-        go.Bar(x=df1['Date'], y=df1['Volume'], name=asset1_name, marker_color='#C45B28', opacity=0.85),
+        go.Bar(x=df1['Date'], y=df1['Volume'], name=asset1_name, 
+               marker=dict(color='#C45B28', line=dict(width=0))),
         row=1, col=1
     )
     
     fig_vol.add_trace(
-        go.Bar(x=df2['Date'], y=df2['Volume'], name=asset2_name, marker_color='#1B6B4A', opacity=0.85),
+        go.Bar(x=df2['Date'], y=df2['Volume'], name=asset2_name, 
+               marker=dict(color='#1B6B4A', line=dict(width=0))),
         row=2, col=1
     )
     
@@ -1650,17 +1652,18 @@ if show_volume:
         height=450,
         template='plotly_white',
         showlegend=False,
-        margin=dict(l=20, r=20, t=40, b=40),
+        margin=dict(l=60, r=20, t=40, b=40),
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='#FFFEFA',
-        font=dict(family="Source Sans Pro, sans-serif", color='#4A3F35', size=12)
+        font=dict(family="Source Sans Pro, sans-serif", color='#4A3F35', size=12),
+        bargap=0.1
     )
     
     # Update subplot title colors
-    fig_vol.update_annotations(font=dict(color='#4A3728', size=13))
+    fig_vol.update_annotations(font=dict(color='#4A3728', size=13, family="Source Sans Pro, sans-serif"))
     
-    fig_vol.update_xaxes(gridcolor='#E0D5C0', linecolor='#B8A88A', tickfont=dict(color='#4A3F35'))
-    fig_vol.update_yaxes(gridcolor='#E0D5C0', linecolor='#B8A88A', tickfont=dict(color='#4A3F35'))
+    fig_vol.update_xaxes(gridcolor='#E0D5C0', linecolor='#B8A88A', tickfont=dict(color='#4A3F35', size=11))
+    fig_vol.update_yaxes(gridcolor='#E0D5C0', linecolor='#B8A88A', tickfont=dict(color='#4A3F35', size=11))
     
     st.plotly_chart(fig_vol, use_container_width=True)
 
