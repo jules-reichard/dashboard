@@ -1513,7 +1513,7 @@ df2_plot = df2_plot.rename(columns={'Close': asset2_name})
 merged = pd.merge(df1_plot, df2_plot, on='Date', how='inner')
 merged_melted = merged.melt(id_vars=['Date'], var_name=t('asset'), value_name=t('prices'))
 
-# Create chart with professional parchment theme colors
+# Create chart with clear, distinct colors and readable legend
 chart_title = f"{t('normalized_prices') if show_normalized else t('prices')}: {asset1_name} {t('vs')} {asset2_name}"
 fig_main = px.line(
     merged_melted,
@@ -1521,33 +1521,35 @@ fig_main = px.line(
     y=t('prices'),
     color=t('asset'),
     title=chart_title,
-    color_discrete_map={asset1_name: '#8B7355', asset2_name: '#4A7C59'},
+    color_discrete_map={asset1_name: '#C45B28', asset2_name: '#1B6B4A'},
     template='plotly_white'
 )
 
 fig_main.update_layout(
     xaxis_title=t("date"),
     yaxis_title=y_label,
-    legend_title=t("asset"),
+    legend_title=dict(text=t("asset"), font=dict(color='#4A3F35', size=13, family="Source Sans Pro, sans-serif")),
     hovermode="x unified",
     height=450,
     margin=dict(l=20, r=20, t=60, b=40),
     paper_bgcolor='rgba(0,0,0,0)',
-    plot_bgcolor='rgba(255,254,250,0.5)',
+    plot_bgcolor='#FFFEFA',
     font=dict(family="Source Sans Pro, sans-serif", color='#4A3F35', size=12),
     title_font=dict(family="Libre Baskerville, serif", color='#4A3728', size=16),
     legend=dict(
-        bgcolor='rgba(255,254,250,0.8)',
-        bordercolor='#D4C5A9',
+        bgcolor='#FFFEFA',
+        bordercolor='#C4B59B',
         borderwidth=1,
         orientation="h",
         yanchor="bottom",
         y=1.02,
         xanchor="center",
-        x=0.5
+        x=0.5,
+        font=dict(color='#3D3428', size=12),
+        title_font=dict(color='#4A3F35', size=12)
     ),
-    xaxis=dict(gridcolor='#E8DCC8', linecolor='#C4B59B'),
-    yaxis=dict(gridcolor='#E8DCC8', linecolor='#C4B59B')
+    xaxis=dict(gridcolor='#E0D5C0', linecolor='#B8A88A', tickfont=dict(color='#4A3F35')),
+    yaxis=dict(gridcolor='#E0D5C0', linecolor='#B8A88A', tickfont=dict(color='#4A3F35'))
 )
 
 fig_main.update_traces(line=dict(width=2.5))
@@ -1572,8 +1574,8 @@ if show_drawdown:
         y=df1['Drawdown'],
         fill='tozeroy',
         name=asset1_name,
-        line=dict(color='#8B7355', width=2),
-        fillcolor='rgba(139, 115, 85, 0.2)'
+        line=dict(color='#C45B28', width=2),
+        fillcolor='rgba(196, 91, 40, 0.25)'
     ))
     
     fig_dd.add_trace(go.Scatter(
@@ -1581,12 +1583,12 @@ if show_drawdown:
         y=df2['Drawdown'],
         fill='tozeroy',
         name=asset2_name,
-        line=dict(color='#4A7C59', width=2),
-        fillcolor='rgba(74, 124, 89, 0.2)'
+        line=dict(color='#1B6B4A', width=2),
+        fillcolor='rgba(27, 107, 74, 0.25)'
     ))
     
     fig_dd.update_layout(
-        title=t("drawdowns_from_ath"),
+        title=dict(text=t("drawdowns_from_ath"), font=dict(family="Libre Baskerville, serif", color='#4A3728', size=14)),
         xaxis_title=t("date"),
         yaxis_title="Drawdown (%)",
         template='plotly_white',
@@ -1594,21 +1596,21 @@ if show_drawdown:
         height=350,
         margin=dict(l=20, r=20, t=50, b=40),
         paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(255,254,250,0.5)',
+        plot_bgcolor='#FFFEFA',
         font=dict(family="Source Sans Pro, sans-serif", color='#4A3F35', size=12),
-        title_font=dict(family="Libre Baskerville, serif", color='#4A3728', size=14),
         legend=dict(
-            bgcolor='rgba(255,254,250,0.8)',
-            bordercolor='#D4C5A9',
+            bgcolor='#FFFEFA',
+            bordercolor='#C4B59B',
             borderwidth=1,
             orientation="h",
             yanchor="bottom",
             y=1.02,
             xanchor="center",
-            x=0.5
+            x=0.5,
+            font=dict(color='#3D3428', size=12)
         ),
-        xaxis=dict(gridcolor='#E8DCC8', linecolor='#C4B59B'),
-        yaxis=dict(gridcolor='#E8DCC8', linecolor='#C4B59B')
+        xaxis=dict(gridcolor='#E0D5C0', linecolor='#B8A88A', tickfont=dict(color='#4A3F35')),
+        yaxis=dict(gridcolor='#E0D5C0', linecolor='#B8A88A', tickfont=dict(color='#4A3F35'))
     )
     
     st.plotly_chart(fig_dd, use_container_width=True)
@@ -1632,30 +1634,33 @@ if show_volume:
     
     fig_vol = make_subplots(rows=2, cols=1, shared_xaxes=True,
                             subplot_titles=(f"{t('volume')} {asset1_name}", f"{t('volume')} {asset2_name}"),
-                            vertical_spacing=0.12)
+                            vertical_spacing=0.15)
     
     fig_vol.add_trace(
-        go.Bar(x=df1['Date'], y=df1['Volume'], name=asset1_name, marker_color='#8B7355', opacity=0.8),
+        go.Bar(x=df1['Date'], y=df1['Volume'], name=asset1_name, marker_color='#C45B28', opacity=0.85),
         row=1, col=1
     )
     
     fig_vol.add_trace(
-        go.Bar(x=df2['Date'], y=df2['Volume'], name=asset2_name, marker_color='#4A7C59', opacity=0.8),
+        go.Bar(x=df2['Date'], y=df2['Volume'], name=asset2_name, marker_color='#1B6B4A', opacity=0.85),
         row=2, col=1
     )
     
     fig_vol.update_layout(
-        height=400,
+        height=450,
         template='plotly_white',
         showlegend=False,
         margin=dict(l=20, r=20, t=40, b=40),
         paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(255,254,250,0.5)',
+        plot_bgcolor='#FFFEFA',
         font=dict(family="Source Sans Pro, sans-serif", color='#4A3F35', size=12)
     )
     
-    fig_vol.update_xaxes(gridcolor='#E8DCC8', linecolor='#C4B59B')
-    fig_vol.update_yaxes(gridcolor='#E8DCC8', linecolor='#C4B59B')
+    # Update subplot title colors
+    fig_vol.update_annotations(font=dict(color='#4A3728', size=13))
+    
+    fig_vol.update_xaxes(gridcolor='#E0D5C0', linecolor='#B8A88A', tickfont=dict(color='#4A3F35'))
+    fig_vol.update_yaxes(gridcolor='#E0D5C0', linecolor='#B8A88A', tickfont=dict(color='#4A3F35'))
     
     st.plotly_chart(fig_vol, use_container_width=True)
 
@@ -1705,17 +1710,17 @@ with col_corr2:
         title=f"{t('rolling_correlation')} ({window} {t('days')})",
         template='plotly_white'
     )
-    fig_corr.add_hline(y=0, line_dash="dash", line_color="#B8A88A", line_width=1.5)
-    fig_corr.update_traces(line=dict(color='#6B5B4A', width=2))
+    fig_corr.add_hline(y=0, line_dash="dash", line_color="#8B7355", line_width=1.5)
+    fig_corr.update_traces(line=dict(color='#C45B28', width=2.5))
     fig_corr.update_layout(
         yaxis_title=t("overall_correlation"),
         height=300,
         paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(255,254,250,0.5)',
+        plot_bgcolor='#FFFEFA',
         font=dict(family="Source Sans Pro, sans-serif", color='#4A3F35', size=12),
         title_font=dict(family="Libre Baskerville, serif", color='#4A3728', size=14),
-        xaxis=dict(gridcolor='#E8DCC8', linecolor='#C4B59B'),
-        yaxis=dict(gridcolor='#E8DCC8', linecolor='#C4B59B')
+        xaxis=dict(gridcolor='#E0D5C0', linecolor='#B8A88A', tickfont=dict(color='#4A3F35')),
+        yaxis=dict(gridcolor='#E0D5C0', linecolor='#B8A88A', tickfont=dict(color='#4A3F35'))
     )
     st.plotly_chart(fig_corr, use_container_width=True)
 
