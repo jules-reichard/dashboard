@@ -1,462 +1,548 @@
+# -*- coding: utf-8 -*-
+"""
+Dashboard Financier - Comparaison d'actifs
+Version améliorée avec métriques, drawdowns, actualités et multi-actifs
+"""
+
 import streamlit as st
 import pandas as pd
 import numpy as np
-import plotly.graph_objects as go
-import plotly.express as px
 import yfinance as yf
-import feedparser
-from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from datetime import datetime, timedelta
-import os
-import json
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import feedparser
 
-# ------------------------------
-# Page setup
-# ------------------------------
-st.set_page_config(page_title="Market Dashboard", layout="wide")
-st.title("📊 Market Intelligence Dashboard")
+# =============================================================================
+# CONFIGURATION DE LA PAGE
+# =============================================================================
+st.set_page_config(
+    page_title="Dashboard Financier",
+    page_icon="📈",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-# ------------------------------
-# Sidebar
-# ------------------------------
-st.sidebar.header("Controls")
-tickers = ["AAPL", "MSFT", "TSLA", "GOOGL", "IBM"]
-# This selection is for the Financial Statements tab
-selected_ticker = st.sidebar.selectbox("Select Company (for Financials)", tickers)
+# Style CSS personnalisé
+st.markdown("""
+<style>
+    .stMetric {
+        background-color: #f0f2f6;
+        padding: 15px;
+        border-radius: 10px;
+    }
+    .stMetric:hover {
+        background-color: #e0e2e6;
+    }
+</style>
+""", unsafe_allow_html=True)
 
-# Set default date range
-start_date_default = datetime.now() - timedelta(days=365)
-end_date_default = datetime.now()
+# =============================================================================
+# CONSTANTES ET CONFIGURATION
+# =============================================================================
+ASSETS = {
+    "Cryptomonnaies": {
+        "BTC-USD": "Bitcoin",
+        "ETH-USD": "Ethereum",
+        "SOL-USD": "Solana",
+        "BNB-USD": "Binance Coin"
+    },
+    "Indices": {
+        "^GSPC": "S&P 500",
+        "^IXIC": "NASDAQ",
+        "^DJI": "Dow Jones",
+        "^FCHI": "CAC 40",
+        "^STOXX50E": "Euro Stoxx 50"
+    },
+    "Actions Tech": {
+        "AAPL": "Apple",
+        "MSFT": "Microsoft",
+        "GOOGL": "Google",
+        "NVDA": "NVIDIA",
+        "META": "Meta"
+    },
+    "Matières premières": {
+        "GC=F": "Or",
+        "SI=F": "Argent",
+        "CL=F": "Pétrole WTI"
+    }
+}
 
-# Create tabs
-tabs = st.tabs(["📈 Stock Prices", "💰 Financial Statements", "📰 Sentiment Analysis"])
+# Créer une liste plate pour les selectbox
+ALL_ASSETS = {}
+for category, assets in ASSETS.items():
+    ALL_ASSETS.update(assets)
 
-# ------------------------------
-# 1️⃣ STOCK PRICE TAB
-# ------------------------------
-with tabs[0]:
-    st.subheader("Comparative Stock Performance")
+TICKER_TO_NAME = {ticker: name for ticker, name in ALL_ASSETS.items()}
+NAME_TO_TICKER = {name: ticker for ticker, name in ALL_ASSETS.items()}
 
-    # --- Date pickers moved from sidebar to this tab ---
-    st.markdown("Select Date Range:")
-    col1, col2 = st.columns(2)
-    with col1:
-        start_date = st.date_input("Start Date", start_date_default)
-    with col2:
-        end_date = st.date_input("End Date", end_date_default)
-    # --- End of moved date pickers ---
-
-    # --- Add Ticker Selector ---
-    # tickers list is defined in the sidebar section
-    selected_tickers_chart = st.multiselect(
-        "Select Stocks to Compare",
-        options=tickers,
-        default=tickers  # Default to all tickers
-    )
-    # --- End of Ticker Selector ---
-
-    @st.cache_data
-    def load_all_data(tickers_to_load, start, end): # Modified function signature
-        """
-        Loads data for all tickers passed in the 'tickers_to_load' list.
-        """
-        if not tickers_to_load:
-             # Don't show a warning if the user just hasn't selected anything yet
-             return pd.DataFrame() # Return empty if no tickers are selected
-             
-        # Ensure start date is before end date
-        if start > end:
-            st.error("Error: Start date must be before end date.")
+# =============================================================================
+# FONCTIONS DE CHARGEMENT DE DONNÉES
+# =============================================================================
+@st.cache_data(ttl=3600)  # Cache d'une heure
+def load_asset_data(ticker: str, years: int) -> pd.DataFrame:
+    """Charge les données historiques d'un actif."""
+    today = datetime.today()
+    start_date = today - timedelta(days=365 * years)
+    
+    try:
+        data = yf.Ticker(ticker).history(start=start_date, end=today)
+        if data.empty:
             return pd.DataFrame()
-
-        # Ensure end date is not in the future (yfinance constraint)
-        if end > datetime.now().date():
-            end = datetime.now().date() - timedelta(days=1)
         
-        # Download stock data for all tickers
-        try:
-            # yfinance downloads up to (but not including) end date
-            df = yf.download(tickers_to_load, start=start, end=end + timedelta(days=1)) 
-        except Exception as e:
-            st.error(f"Error downloading data: {e}")
-            return pd.DataFrame()
-            
-        # Fallback if data is empty for the selected range
-        if df.empty and (start.date() != start_date_default.date() or end.date() != end_date_default.date()):
-            st.warning("No data found for the selected date range. Fetching last 1 year of data as fallback.")
-            df = yf.download(tickers_to_load, period="1y") # Use passed list
-            
+        df = pd.DataFrame(data)
+        df.reset_index(inplace=True)
+        df['Date'] = pd.to_datetime(df['Date']).dt.date
         return df
-
-    # Check if tickers are selected before loading
-    if selected_tickers_chart:
-        all_data = load_all_data(selected_tickers_chart, start_date, end_date) # Updated function call
-
-        if not all_data.empty:
-            
-            # --- Handle single vs. multiple tickers for 'Close' data ---
-            if len(selected_tickers_chart) == 1:
-                # If only one ticker, 'Close' is a Series. Convert to DataFrame.
-                close_data = all_data[['Close']]
-                close_data.columns = [selected_tickers_chart[0]] # Name the column correctly
-            else:
-                # If multiple tickers, 'Close' is already a DataFrame
-                close_data = all_data['Close']
-            # --- End of handle ---
-            
-            # Drop rows with any NaN values (e.g., holidays) before plotting
-            close_data = close_data.dropna()
-
-            # Melt the dataframe to long format for Plotly Express
-            # This makes it easy to plot multiple lines
-            df_to_plot = close_data.reset_index().melt(id_vars='Date', value_name='Price', var_name='Ticker')
-
-            # Plotly chart
-            fig = px.line(
-                df_to_plot,
-                x='Date',
-                y='Price',
-                color='Ticker', # Creates a different line for each Ticker
-                title='Closing Prices Comparison'
-            )
-            
-            fig.update_layout(
-                xaxis_title="Date",
-                yaxis_title="Price (USD)",
-                template="plotly_white",
-                height=500
-            )
-            st.plotly_chart(fig, use_container_width=True)
-
-            # Descriptive Statistics
-            st.markdown("#### Descriptive Statistics (Close Prices)")
-            st.dataframe(close_data.describe()) # Describe only the close prices
-            
-            # --- Annualized Metrics ---
-            st.markdown("#### Annualized Metrics")
-            
-            # Calculate daily returns (for volatility)
-            daily_returns = close_data.pct_change().dropna()
-            
-            N = 252  # Number of trading days in a year
-            
-            # --- Annualized Return Calculation (Arithmetic Mean) ---
-            annualized_returns = daily_returns.mean().apply(lambda x: ((1 + x)**N - 1) * 100)
-            # --- End of Reverted Calculation ---
-            
-            # Calculate annualized volatility (standard formula)
-            annualized_vol = daily_returns.std() * np.sqrt(N) * 100
-            
-            # Combine into a DataFrame
-            annual_stats_df = pd.DataFrame({
-                'Annualized Return': annualized_returns,
-                'Annualized Volatility': annualized_vol
-            })
-            
-            # Display as formatted percentages
-            st.dataframe(annual_stats_df.style.format("{:.2f}%"))
-
-        else:
-            if selected_tickers_chart: # Only show this if tickers were selected but no data came back
-                st.warning("No stock data available to display for the selected tickers/date range.")
-    else:
-        # This message shows if the multiselect box is empty
-        st.info("Select one or more tickers above to see the comparison chart and metrics.")
-
-
-# ------------------------------
-# 2️⃣ FINANCIAL STATEMENTS TAB
-# ------------------------------
-with tabs[1]:
-    st.subheader(f"💰 {selected_ticker} Financial Statements")
-
-    @st.cache_data
-    def get_financials(ticker):
-        stock = yf.Ticker(ticker)
-        return stock.income_stmt, stock.balance_sheet, stock.cashflow
-
-    # Helper function to add % change columns and format in thousands
-    def format_financials_df(df):
-        """
-        Formats the financial statement dataframe to show values in thousands (k)
-        and adds year-over-year percentage change columns.
-        """
-        if df.empty:
-            return df, {}
-        
-        # yfinance columns are descending, so periods=-1 compares to the previous year (next column)
-        df_pct = df.pct_change(axis=1, periods=-1)
-        
-        # Create a new dataframe to hold interleaved columns
-        combined_df = pd.DataFrame()
-        formatter = {}
-        
-        for col in df.columns:
-            col_name_date = col.strftime('%Y-%m-%d')
-            pct_col_name = f"{col.year} % Chg"
-            
-            # Divide value columns by 1000 for 'k' format
-            combined_df[col_name_date] = df[col] / 1000
-            # Format as thousands with 'k' suffix
-            formatter[col_name_date] = lambda x: f'{x:,.0f}k' if pd.notna(x) else '-' 
-            
-            if col in df_pct.columns:
-                combined_df[pct_col_name] = df_pct[col]
-                formatter[pct_col_name] = '{:,.2%}' # Format as percentage
-                
-        return combined_df, formatter
-
-
-    try:
-        IS, BS, CF = get_financials(selected_ticker)
-
-        # --- Income Statement ---
-        st.markdown("### 🧾 Income Statement")
-        if not IS.empty:
-            # --- Interactive Chart ---
-            is_plot_df = IS.T.reset_index().sort_values(by='index')
-            is_plot_df = is_plot_df.rename(columns={'index': 'Year'})
-            is_plot_df['Year'] = is_plot_df['Year'].astype(str)
-            is_metrics = is_plot_df.columns.drop('Year').tolist()
-            default_is_metrics = [m for m in ['Total Revenue', 'Gross Profit', 'Net Income'] if m in is_metrics]
-            
-            selected_is_metrics = st.multiselect(
-                "Select Income Statement metrics to plot",
-                options=is_metrics,
-                default=default_is_metrics,
-                key="is_multiselect"
-            )
-            
-            if selected_is_metrics:
-                is_melted = is_plot_df.melt(id_vars='Year', value_vars=selected_is_metrics, var_name='Metric', value_name='Amount (k)')
-                is_melted['Amount (k)'] = is_melted['Amount (k)'] / 1000  # Format in k
-                
-                fig_is = px.line(
-                    is_melted, 
-                    x='Year', 
-                    y='Amount (k)', 
-                    color='Metric', 
-                    title=f"{selected_ticker} Income Statement Trends (in thousands)",
-                    markers=True
-                )
-                st.plotly_chart(fig_is, use_container_width=True)
-            # --- End Chart ---
-
-            is_display, is_formatter = format_financials_df(IS)
-            st.dataframe(is_display.style.format(na_rep='-', formatter=is_formatter))
-        else:
-            st.warning("No Income Statement data available.")
-
-        # --- Balance Sheet ---
-        st.markdown("### 📋 Balance Sheet")
-        if not BS.empty:
-            # --- Interactive Chart ---
-            bs_plot_df = BS.T.reset_index().sort_values(by='index')
-            bs_plot_df = bs_plot_df.rename(columns={'index': 'Year'})
-            bs_plot_df['Year'] = bs_plot_df['Year'].astype(str)
-            bs_metrics = bs_plot_df.columns.drop('Year').tolist()
-            default_bs_metrics = [m for m in ['Total Assets', 'Total Liabilities Net Minority Interest', 'Stockholders Equity'] if m in bs_metrics]
-
-            selected_bs_metrics = st.multiselect(
-                "Select Balance Sheet metrics to plot",
-                options=bs_metrics,
-                default=default_bs_metrics,
-                key="bs_multiselect"
-            )
-            
-            if selected_bs_metrics:
-                bs_melted = bs_plot_df.melt(id_vars='Year', value_vars=selected_bs_metrics, var_name='Metric', value_name='Amount (k)')
-                bs_melted['Amount (k)'] = bs_melted['Amount (k)'] / 1000
-                
-                fig_bs = px.line(
-                    bs_melted, 
-                    x='Year', 
-                    y='Amount (k)', 
-                    color='Metric', 
-                    title=f"{selected_ticker} Balance Sheet Trends (in thousands)",
-                    markers=True
-                )
-                st.plotly_chart(fig_bs, use_container_width=True)
-            # --- End Chart ---
-
-            bs_display, bs_formatter = format_financials_df(BS)
-            st.dataframe(bs_display.style.format(na_rep='-', formatter=bs_formatter))
-        else:
-            st.warning("No Balance Sheet data available.")
-
-        # --- Cash Flow Statement ---
-        st.markdown("### 💵 Cash Flow Statement")
-        if not CF.empty:
-            # --- Interactive Chart ---
-            cf_plot_df = CF.T.reset_index().sort_values(by='index')
-            cf_plot_df = cf_plot_df.rename(columns={'index': 'Year'})
-            cf_plot_df['Year'] = cf_plot_df['Year'].astype(str)
-            cf_metrics = cf_plot_df.columns.drop('Year').tolist()
-            default_cf_metrics = [m for m in ['Operating Cash Flow', 'Free Cash Flow', 'Capital Expenditure'] if m in cf_metrics]
-
-            selected_cf_metrics = st.multiselect(
-                "Select Cash Flow metrics to plot",
-                options=cf_metrics,
-                default=default_cf_metrics,
-                key="cf_multiselect"
-            )
-
-            if selected_cf_metrics:
-                cf_melted = cf_plot_df.melt(id_vars='Year', value_vars=selected_cf_metrics, var_name='Metric', value_name='Amount (k)')
-                cf_melted['Amount (k)'] = cf_melted['Amount (k)'] / 1000
-                
-                fig_cf = px.line(
-                    cf_melted, 
-                    x='Year', 
-                    y='Amount (k)', 
-                    color='Metric', 
-                    title=f"{selected_ticker} Cash Flow Trends (in thousands)",
-                    markers=True
-                )
-                st.plotly_chart(fig_cf, use_container_width=True)
-            # --- End Chart ---
-
-            cf_display, cf_formatter = format_financials_df(CF)
-            st.dataframe(cf_display.style.format(na_rep='-', formatter=cf_formatter))
-        else:
-            st.warning("No Cash Flow Statement data available.")
-
     except Exception as e:
-        st.error(f"Error loading financial statements: {e}")
-        st.warning("Note: yfinance may occasionally have trouble fetching financial statements for some tickers.")
-
-# ------------------------------
-# 3️⃣ SENTIMENT ANALYSIS TAB
-# ------------------------------
-
-# --- Sentiment History Functions ---
-HISTORY_FILE = "sentiment_history.json"
-
-@st.cache_data(ttl=3600) # Cache the feed fetch for 1 hour
-def fetch_cnbc_headlines():
-    url = "https://www.cnbc.com/id/100003114/device/rss/rss.html"
-    try:
-        feed = feedparser.parse(url)
-        headlines = pd.DataFrame({
-            "Title": [entry.title for entry in feed.entries[:15]],
-            "Link": [entry.link for entry in feed.entries[:15]]
-        })
-        return headlines
-    except Exception as e:
-        st.error(f"Error fetching RSS feed: {e}")
+        st.error(f"Erreur lors du chargement de {ticker}: {e}")
         return pd.DataFrame()
 
-def load_sentiment_history():
-    """Loads sentiment history from the JSON file."""
-    if os.path.exists(HISTORY_FILE):
-        try:
-            with open(HISTORY_FILE, 'r') as f:
-                return json.load(f)
-        except json.JSONDecodeError:
-            return []
-    return []
 
-def save_sentiment_history(history):
-    """Saves the updated sentiment history to the JSON file."""
+@st.cache_data(ttl=3600)
+def get_asset_info(ticker: str) -> dict:
+    """Récupère les informations détaillées d'un actif."""
     try:
-        with open(HISTORY_FILE, 'w') as f:
-            json.dump(history, f, indent=4)
-    except IOError as e:
-        st.error(f"Error saving sentiment history: {e}")
-
-def get_current_sentiment(headlines_df):
-    """Calculates the current average sentiment from headlines."""
-    if headlines_df.empty:
-        return None, None
-        
-    analyzer = SentimentIntensityAnalyzer()
-    headlines_df["Sentiment Score"] = headlines_df["Title"].apply(lambda x: analyzer.polarity_scores(x)["compound"])
-    headlines_df["Sentiment"] = headlines_df["Sentiment Score"].apply(lambda x:
-                                                                "Positive" if x > 0.2 else
-                                                                "Negative" if x < -0.2 else
-                                                                "Neutral")
-    avg_sentiment = headlines_df["Sentiment Score"].mean()
-    return avg_sentiment, headlines_df
-
-# --- End Sentiment History Functions ---
+        info = yf.Ticker(ticker).info
+        return info
+    except:
+        return {}
 
 
-with tabs[2]:
-    st.subheader("📰 Market Sentiment (CNBC News)")
+def normalize_series(series: pd.Series) -> pd.Series:
+    """Normalise une série (z-score)."""
+    return (series - series.mean()) / series.std()
 
-    headlines = fetch_cnbc_headlines()
+
+def calculate_returns(prices: pd.Series) -> float:
+    """Calcule le rendement total en pourcentage."""
+    if len(prices) < 2:
+        return 0.0
+    return ((prices.iloc[-1] / prices.iloc[0]) - 1) * 100
+
+
+def calculate_volatility(prices: pd.Series, annualize: bool = True) -> float:
+    """Calcule la volatilité (écart-type des rendements)."""
+    returns = prices.pct_change().dropna()
+    vol = returns.std()
+    if annualize:
+        vol *= np.sqrt(252)  # Annualisation
+    return vol * 100
+
+
+def calculate_drawdown(prices: pd.Series) -> pd.Series:
+    """Calcule le drawdown depuis le plus haut historique."""
+    peak = prices.cummax()
+    drawdown = (prices - peak) / peak * 100
+    return drawdown
+
+
+def calculate_sharpe_ratio(prices: pd.Series, risk_free_rate: float = 0.04) -> float:
+    """Calcule le ratio de Sharpe simplifié."""
+    returns = prices.pct_change().dropna()
+    excess_return = returns.mean() * 252 - risk_free_rate
+    volatility = returns.std() * np.sqrt(252)
+    if volatility == 0:
+        return 0
+    return excess_return / volatility
+
+
+@st.cache_data(ttl=3600)
+def get_news(ticker: str) -> list:
+    """Récupère les actualités via RSS Yahoo Finance."""
+    try:
+        feed = feedparser.parse(f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}")
+        return feed.entries[:5]
+    except:
+        return []
+
+
+# =============================================================================
+# SIDEBAR - PARAMÈTRES
+# =============================================================================
+with st.sidebar:
+    st.header("⚙️ Paramètres")
     
-    if not headlines.empty:
-        current_avg_sentiment, headlines_with_sentiment = get_current_sentiment(headlines)
-        
-        if current_avg_sentiment is not None:
-            st.metric("Average Sentiment (Recent CNBC Headlines)", f"{current_avg_sentiment:.2f}")
+    st.subheader("Sélection des actifs")
+    
+    # Premier actif
+    asset1_name = st.selectbox(
+        "Premier actif",
+        options=list(NAME_TO_TICKER.keys()),
+        index=list(NAME_TO_TICKER.keys()).index("Bitcoin")
+    )
+    asset1_ticker = NAME_TO_TICKER[asset1_name]
+    
+    # Deuxième actif
+    asset2_name = st.selectbox(
+        "Deuxième actif",
+        options=list(NAME_TO_TICKER.keys()),
+        index=list(NAME_TO_TICKER.keys()).index("S&P 500")
+    )
+    asset2_ticker = NAME_TO_TICKER[asset2_name]
+    
+    st.subheader("Période")
+    years = st.slider("Nombre d'années", min_value=1, max_value=10, value=5)
+    
+    st.subheader("Options d'affichage")
+    show_normalized = st.checkbox("Afficher les prix normalisés", value=True)
+    show_drawdown = st.checkbox("Afficher les drawdowns", value=True)
+    show_volume = st.checkbox("Afficher les volumes", value=False)
+    
+    st.markdown("---")
+    
+    if st.button("🔄 Rafraîchir les données", use_container_width=True):
+        st.cache_data.clear()
+        st.rerun()
+    
+    st.markdown("---")
+    st.caption("Dashboard créé avec Streamlit")
+    st.caption(f"Dernière mise à jour: {datetime.now().strftime('%H:%M:%S')}")
 
-            # --- Historical Sentiment Logic ---
-            sentiment_history = load_sentiment_history()
-            
-            # Get today's date as a string
-            today_str = datetime.now().strftime('%Y-%m-%d')
-            
-            # Check if we already saved today's score
-            today_score_exists = any(entry['Date'] == today_str for entry in sentiment_history)
-            
-            if not today_score_exists:
-                # Add the new score and timestamp
-                new_entry = {
-                    "Date": today_str,
-                    "Timestamp": datetime.now().isoformat(),
-                    "Score": current_avg_sentiment
-                }
-                sentiment_history.append(new_entry)
-                save_sentiment_history(sentiment_history)
-            
-            # --- Display Historical Sentiment Chart ---
-            if sentiment_history:
-                history_df = pd.DataFrame(sentiment_history)
-                history_df['Date'] = pd.to_datetime(history_df['Date'])
-                history_df = history_df.sort_values(by='Date')
-                
-                fig_history = px.line(
-                    history_df,
-                    x='Date',
-                    y='Score',
-                    title='Historical Sentiment Trend (Updated Daily)',
-                    markers=True
-                )
-                fig_history.update_layout(yaxis_title='Average Sentiment Score')
-                st.plotly_chart(fig_history, use_container_width=True)
-            # --- End Historical Chart ---
 
-            # --- Added Pie Chart ---
-            sentiment_counts = headlines_with_sentiment["Sentiment"].value_counts().reset_index(name='Count')
-            
-            fig_pie = px.pie(
-                sentiment_counts, 
-                names='Sentiment', 
-                values='Count', 
-                title='Recent Sentiment Distribution',
-                color='Sentiment',
-                color_discrete_map={
-                    'Positive': 'seagreen', 
-                    'Negative': 'tomato', 
-                    'Neutral': 'silver'
-                }
-            )
-            st.plotly_chart(fig_pie, use_container_width=True)
-            
-            # --- End of Added Pie Chart ---
+# =============================================================================
+# CHARGEMENT DES DONNÉES
+# =============================================================================
+st.title("📈 Dashboard Financier")
+st.markdown(f"**Comparaison:** {asset1_name} vs {asset2_name} sur {years} ans")
 
-            # Display DataFrame with clickable links
-            st.dataframe(
-                headlines_with_sentiment[["Title", "Sentiment", "Sentiment Score", "Link"]],
-                column_config={
-                    "Link": st.column_config.LinkColumn("Article Link", display_text="Read Article")
-                }
-            )
-            st.caption("News source: CNBC RSS Feed")
-        else:
-            st.warning("Could not calculate sentiment.")
+# Chargement avec spinner
+with st.spinner("Chargement des données..."):
+    df1 = load_asset_data(asset1_ticker, years)
+    df2 = load_asset_data(asset2_ticker, years)
+
+# Vérification des données
+if df1.empty or df2.empty:
+    st.error("Impossible de charger les données. Veuillez réessayer plus tard.")
+    st.stop()
+
+
+# =============================================================================
+# MÉTRIQUES CLÉS
+# =============================================================================
+st.header("📊 Métriques clés")
+
+col1, col2, col3, col4 = st.columns(4)
+
+# Rendement Asset 1
+return1 = calculate_returns(df1['Close'])
+with col1:
+    st.metric(
+        label=f"Rendement {asset1_name}",
+        value=f"{return1:.1f}%",
+        delta=f"{return1:.1f}%" if return1 != 0 else None
+    )
+
+# Rendement Asset 2
+return2 = calculate_returns(df2['Close'])
+with col2:
+    st.metric(
+        label=f"Rendement {asset2_name}",
+        value=f"{return2:.1f}%",
+        delta=f"{return2:.1f}%" if return2 != 0 else None
+    )
+
+# Volatilité Asset 1
+vol1 = calculate_volatility(df1['Close'])
+with col3:
+    st.metric(
+        label=f"Volatilité {asset1_name}",
+        value=f"{vol1:.1f}%"
+    )
+
+# Volatilité Asset 2
+vol2 = calculate_volatility(df2['Close'])
+with col4:
+    st.metric(
+        label=f"Volatilité {asset2_name}",
+        value=f"{vol2:.1f}%"
+    )
+
+# Deuxième ligne de métriques
+col5, col6, col7, col8 = st.columns(4)
+
+# Prix actuels
+with col5:
+    current_price1 = df1['Close'].iloc[-1]
+    st.metric(
+        label=f"Prix actuel {asset1_name}",
+        value=f"${current_price1:,.2f}"
+    )
+
+with col6:
+    current_price2 = df2['Close'].iloc[-1]
+    st.metric(
+        label=f"Prix actuel {asset2_name}",
+        value=f"${current_price2:,.2f}"
+    )
+
+# Sharpe Ratio
+with col7:
+    sharpe1 = calculate_sharpe_ratio(df1['Close'])
+    st.metric(
+        label=f"Sharpe {asset1_name}",
+        value=f"{sharpe1:.2f}"
+    )
+
+with col8:
+    sharpe2 = calculate_sharpe_ratio(df2['Close'])
+    st.metric(
+        label=f"Sharpe {asset2_name}",
+        value=f"{sharpe2:.2f}"
+    )
+
+
+# =============================================================================
+# GRAPHIQUE PRINCIPAL - COMPARAISON
+# =============================================================================
+st.markdown("---")
+st.header("📈 Comparaison des performances")
+
+# Préparation des données pour le graphique
+df1_plot = df1[['Date', 'Close']].copy()
+df2_plot = df2[['Date', 'Close']].copy()
+
+if show_normalized:
+    df1_plot['Close'] = normalize_series(df1['Close'])
+    df2_plot['Close'] = normalize_series(df2['Close'])
+    y_label = "Prix normalisé (z-score)"
+else:
+    y_label = "Prix ($)"
+
+# Fusion des données
+df1_plot = df1_plot.rename(columns={'Close': asset1_name})
+df2_plot = df2_plot.rename(columns={'Close': asset2_name})
+
+merged = pd.merge(df1_plot, df2_plot, on='Date', how='inner')
+merged_melted = merged.melt(id_vars=['Date'], var_name='Actif', value_name='Prix')
+
+# Création du graphique
+fig_main = px.line(
+    merged_melted,
+    x='Date',
+    y='Prix',
+    color='Actif',
+    title=f"{'Prix normalisés' if show_normalized else 'Prix'}: {asset1_name} vs {asset2_name}",
+    color_discrete_map={asset1_name: '#FF6B6B', asset2_name: '#4ECDC4'},
+    template='plotly_white'
+)
+
+fig_main.update_layout(
+    xaxis_title="Date",
+    yaxis_title=y_label,
+    legend_title="Actif",
+    hovermode="x unified",
+    height=500
+)
+
+st.plotly_chart(fig_main, use_container_width=True)
+
+
+# =============================================================================
+# GRAPHIQUE DRAWDOWN
+# =============================================================================
+if show_drawdown:
+    st.markdown("---")
+    st.header("📉 Drawdowns (pertes depuis le plus haut)")
+    
+    df1['Drawdown'] = calculate_drawdown(df1['Close'])
+    df2['Drawdown'] = calculate_drawdown(df2['Close'])
+    
+    fig_dd = go.Figure()
+    
+    fig_dd.add_trace(go.Scatter(
+        x=df1['Date'],
+        y=df1['Drawdown'],
+        fill='tozeroy',
+        name=asset1_name,
+        line=dict(color='#FF6B6B'),
+        fillcolor='rgba(255, 107, 107, 0.3)'
+    ))
+    
+    fig_dd.add_trace(go.Scatter(
+        x=df2['Date'],
+        y=df2['Drawdown'],
+        fill='tozeroy',
+        name=asset2_name,
+        line=dict(color='#4ECDC4'),
+        fillcolor='rgba(78, 205, 196, 0.3)'
+    ))
+    
+    fig_dd.update_layout(
+        title="Drawdowns depuis les plus hauts historiques",
+        xaxis_title="Date",
+        yaxis_title="Drawdown (%)",
+        template='plotly_white',
+        hovermode="x unified",
+        height=400
+    )
+    
+    st.plotly_chart(fig_dd, use_container_width=True)
+    
+    # Stats drawdown
+    col_dd1, col_dd2 = st.columns(2)
+    with col_dd1:
+        max_dd1 = df1['Drawdown'].min()
+        st.metric(f"Drawdown max {asset1_name}", f"{max_dd1:.1f}%")
+    with col_dd2:
+        max_dd2 = df2['Drawdown'].min()
+        st.metric(f"Drawdown max {asset2_name}", f"{max_dd2:.1f}%")
+
+
+# =============================================================================
+# GRAPHIQUE VOLUMES
+# =============================================================================
+if show_volume:
+    st.markdown("---")
+    st.header("📊 Volumes d'échange")
+    
+    fig_vol = make_subplots(rows=2, cols=1, shared_xaxes=True,
+                            subplot_titles=(f"Volume {asset1_name}", f"Volume {asset2_name}"))
+    
+    fig_vol.add_trace(
+        go.Bar(x=df1['Date'], y=df1['Volume'], name=asset1_name, marker_color='#FF6B6B'),
+        row=1, col=1
+    )
+    
+    fig_vol.add_trace(
+        go.Bar(x=df2['Date'], y=df2['Volume'], name=asset2_name, marker_color='#4ECDC4'),
+        row=2, col=1
+    )
+    
+    fig_vol.update_layout(
+        height=500,
+        template='plotly_white',
+        showlegend=False
+    )
+    
+    st.plotly_chart(fig_vol, use_container_width=True)
+
+
+# =============================================================================
+# CORRÉLATION
+# =============================================================================
+st.markdown("---")
+st.header("🔗 Analyse de corrélation")
+
+# Corrélation glissante
+window = 30  # Fenêtre de 30 jours
+
+merged_corr = pd.merge(
+    df1[['Date', 'Close']].rename(columns={'Close': 'Asset1'}),
+    df2[['Date', 'Close']].rename(columns={'Close': 'Asset2'}),
+    on='Date',
+    how='inner'
+)
+
+# Rendements journaliers
+merged_corr['Return1'] = merged_corr['Asset1'].pct_change()
+merged_corr['Return2'] = merged_corr['Asset2'].pct_change()
+
+# Corrélation glissante
+merged_corr['Rolling_Corr'] = merged_corr['Return1'].rolling(window=window).corr(merged_corr['Return2'])
+
+col_corr1, col_corr2 = st.columns([1, 2])
+
+with col_corr1:
+    overall_corr = merged_corr['Return1'].corr(merged_corr['Return2'])
+    st.metric("Corrélation globale", f"{overall_corr:.3f}")
+    
+    st.markdown("""
+    **Interprétation:**
+    - **> 0.7**: Forte corrélation positive
+    - **0.3 - 0.7**: Corrélation modérée
+    - **-0.3 - 0.3**: Faible corrélation
+    - **< -0.3**: Corrélation négative
+    """)
+
+with col_corr2:
+    fig_corr = px.line(
+        merged_corr,
+        x='Date',
+        y='Rolling_Corr',
+        title=f"Corrélation glissante ({window} jours)",
+        template='plotly_white'
+    )
+    fig_corr.add_hline(y=0, line_dash="dash", line_color="gray")
+    fig_corr.update_layout(
+        yaxis_title="Corrélation",
+        height=300
+    )
+    st.plotly_chart(fig_corr, use_container_width=True)
+
+
+# =============================================================================
+# ACTUALITÉS
+# =============================================================================
+st.markdown("---")
+st.header("📰 Actualités récentes")
+
+col_news1, col_news2 = st.columns(2)
+
+with col_news1:
+    st.subheader(f"📰 {asset1_name}")
+    news1 = get_news(asset1_ticker)
+    if news1:
+        for entry in news1:
+            st.markdown(f"**[{entry.title}]({entry.link})**")
+            if hasattr(entry, 'published'):
+                st.caption(entry.published)
+            st.markdown("---")
     else:
-        st.warning("Could not fetch news headlines for sentiment analysis.")
+        st.info("Aucune actualité disponible")
 
+with col_news2:
+    st.subheader(f"📰 {asset2_name}")
+    news2 = get_news(asset2_ticker)
+    if news2:
+        for entry in news2:
+            st.markdown(f"**[{entry.title}]({entry.link})**")
+            if hasattr(entry, 'published'):
+                st.caption(entry.published)
+            st.markdown("---")
+    else:
+        st.info("Aucune actualité disponible")
+
+
+# =============================================================================
+# DONNÉES BRUTES
+# =============================================================================
+st.markdown("---")
+st.header("📋 Données brutes")
+
+with st.expander(f"Voir les données {asset1_name}"):
+    st.dataframe(df1, use_container_width=True)
+
+with st.expander(f"Voir les données {asset2_name}"):
+    st.dataframe(df2, use_container_width=True)
+
+with st.expander("Voir les données fusionnées"):
+    st.dataframe(merged, use_container_width=True)
+
+
+# =============================================================================
+# EXPORT
+# =============================================================================
+st.markdown("---")
+st.header("💾 Exporter les données")
+
+col_export1, col_export2 = st.columns(2)
+
+with col_export1:
+    csv1 = df1.to_csv(index=False)
+    st.download_button(
+        label=f"📥 Télécharger {asset1_name} (CSV)",
+        data=csv1,
+        file_name=f"{asset1_ticker}_{years}y.csv",
+        mime="text/csv"
+    )
+
+with col_export2:
+    csv2 = df2.to_csv(index=False)
+    st.download_button(
+        label=f"📥 Télécharger {asset2_name} (CSV)",
+        data=csv2,
+        file_name=f"{asset2_ticker}_{years}y.csv",
+        mime="text/csv"
+    )
