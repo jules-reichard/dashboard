@@ -2053,15 +2053,22 @@ with tab_comparison:
 with tab_economic:
     st.markdown(f"*{t('analysis_disclaimer')}*")
     
-    # API Key input
-    st.subheader(t("api_key_required"))
-    st.markdown(f"{t('api_key_help')} [console.groq.com](https://console.groq.com)")
+    # Check for API key in secrets first, then allow manual input
+    api_key_from_secrets = st.secrets.get("GROQ_API_KEY", None) if hasattr(st, 'secrets') else None
     
-    api_key = st.text_input(
-        t("enter_api_key"),
-        type="password",
-        help="Get your free API key at console.groq.com"
-    )
+    if api_key_from_secrets:
+        api_key = api_key_from_secrets
+        st.success("✅ API Key loaded from secrets")
+    else:
+        # API Key input (manual)
+        st.subheader(t("api_key_required"))
+        st.markdown(f"{t('api_key_help')} [console.groq.com](https://console.groq.com)")
+        
+        api_key = st.text_input(
+            t("enter_api_key"),
+            type="password",
+            help="Get your free API key at console.groq.com"
+        )
     
     st.markdown("---")
     
