@@ -1,9 +1,10 @@
 [theme]
-primaryColor = "#FF6B6B"
-backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#F0F2F6"
-textColor = "#262730"
-font = "sans serif"
+# Pirate Map Theme - Parchment/Sand colors
+primaryColor = "#8B4513"
+backgroundColor = "#F5E6C8"
+secondaryBackgroundColor = "#EDD9B4"
+textColor = "#3D2914"
+font = "serif"
 
 [server]
 headless = true
