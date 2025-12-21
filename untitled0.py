@@ -566,141 +566,408 @@ if "language" not in st.session_state:
 
 
 # =============================================================================
-# CUSTOM CSS - PIRATE MAP THEME
+# CUSTOM CSS - PROFESSIONAL PARCHMENT THEME
 # =============================================================================
 def apply_custom_css():
-    """Apply custom CSS including RTL support and pirate map theme."""
+    """Apply custom CSS including RTL support and professional parchment theme."""
     is_rtl = st.session_state.language in RTL_LANGUAGES
     direction = "rtl" if is_rtl else "ltr"
     text_align = "right" if is_rtl else "left"
     
     st.markdown(f"""
     <style>
-        /* Main background - parchment/sand color */
+        /* ============================================
+           GLOBAL STYLES
+           ============================================ */
+        
+        /* Import Google Font for professional look */
+        @import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&family=Source+Sans+Pro:wght@400;600;700&display=swap');
+        
+        /* Main app background */
         .stApp {{
-            background-color: #F5E6C8;
+            background: linear-gradient(135deg, #F5E6C8 0%, #EDE0C8 50%, #F0E4CE 100%);
+            font-family: 'Source Sans Pro', sans-serif;
         }}
         
-        /* Metric cards - cream/ivory with brown border */
+        /* Main container */
+        .main .block-container {{
+            direction: {direction};
+            text-align: {text_align};
+            padding-top: 2rem;
+            max-width: 1200px;
+        }}
+        
+        /* ============================================
+           TYPOGRAPHY
+           ============================================ */
+        
+        /* Main title */
+        h1 {{
+            font-family: 'Libre Baskerville', serif !important;
+            color: #4A3728 !important;
+            font-weight: 700 !important;
+            letter-spacing: 0.5px;
+            border-bottom: 3px solid #8B7355;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1.5rem !important;
+        }}
+        
+        /* Section headers */
+        h2 {{
+            font-family: 'Libre Baskerville', serif !important;
+            color: #5D4E37 !important;
+            font-weight: 700 !important;
+            font-size: 1.5rem !important;
+            margin-top: 1rem !important;
+            padding-left: 0.5rem;
+            border-left: 4px solid #8B7355;
+        }}
+        
+        /* Subsection headers */
+        h3 {{
+            font-family: 'Source Sans Pro', sans-serif !important;
+            color: #6B5B4A !important;
+            font-weight: 600 !important;
+            font-size: 1.1rem !important;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }}
+        
+        /* Paragraph text */
+        p, span, label {{
+            color: #4A3F35 !important;
+        }}
+        
+        /* ============================================
+           SIDEBAR
+           ============================================ */
+        
+        [data-testid="stSidebar"] {{
+            background: linear-gradient(180deg, #E8D9BE 0%, #DFD0B8 100%);
+            border-right: 1px solid #C4B59B;
+            box-shadow: 2px 0 10px rgba(74, 55, 40, 0.1);
+        }}
+        
+        [data-testid="stSidebar"] h2 {{
+            border-left: none !important;
+            border-bottom: 2px solid #A89880;
+            padding-bottom: 0.5rem;
+            padding-left: 0 !important;
+            font-size: 1.2rem !important;
+        }}
+        
+        [data-testid="stSidebar"] h3 {{
+            color: #5D4E37 !important;
+            font-size: 0.9rem !important;
+            margin-top: 1.5rem !important;
+            margin-bottom: 0.5rem !important;
+        }}
+        
+        /* Sidebar labels */
+        [data-testid="stSidebar"] label {{
+            color: #4A3F35 !important;
+            font-weight: 600 !important;
+            font-size: 0.85rem !important;
+        }}
+        
+        /* Sidebar caption */
+        [data-testid="stSidebar"] .stCaption {{
+            color: #7A6B5A !important;
+            font-size: 0.75rem !important;
+        }}
+        
+        /* ============================================
+           SELECTBOX / DROPDOWN
+           ============================================ */
+        
+        [data-testid="stSelectbox"] > div > div {{
+            background-color: #FFFEF9 !important;
+            border: 2px solid #B8A88A !important;
+            border-radius: 8px !important;
+            color: #3D3428 !important;
+            font-weight: 500 !important;
+            transition: all 0.2s ease;
+        }}
+        
+        [data-testid="stSelectbox"] > div > div:hover {{
+            border-color: #8B7355 !important;
+            box-shadow: 0 2px 8px rgba(74, 55, 40, 0.15);
+        }}
+        
+        [data-testid="stSelectbox"] > div > div:focus-within {{
+            border-color: #6B5344 !important;
+            box-shadow: 0 0 0 3px rgba(107, 83, 68, 0.2);
+        }}
+        
+        /* Selectbox label - IMPORTANT FIX */
+        [data-testid="stSelectbox"] > label {{
+            color: #4A3F35 !important;
+            font-weight: 600 !important;
+            font-size: 0.9rem !important;
+            margin-bottom: 0.3rem !important;
+        }}
+        
+        /* ============================================
+           SLIDER
+           ============================================ */
+        
+        [data-testid="stSlider"] > label {{
+            color: #4A3F35 !important;
+            font-weight: 600 !important;
+        }}
+        
+        [data-testid="stSlider"] [data-baseweb="slider"] {{
+            margin-top: 0.5rem;
+        }}
+        
+        /* Slider track */
+        [data-testid="stSlider"] [role="slider"] {{
+            background-color: #8B7355 !important;
+        }}
+        
+        /* ============================================
+           CHECKBOX
+           ============================================ */
+        
+        [data-testid="stCheckbox"] {{
+            padding: 0.3rem 0;
+        }}
+        
+        [data-testid="stCheckbox"] label {{
+            color: #4A3F35 !important;
+            font-weight: 500 !important;
+        }}
+        
+        [data-testid="stCheckbox"] label span[data-baseweb="checkbox"] {{
+            border-color: #8B7355 !important;
+        }}
+        
+        /* ============================================
+           METRIC CARDS
+           ============================================ */
+        
         [data-testid="stMetric"] {{
-            background-color: #FDF8E8;
-            padding: 20px;
+            background: linear-gradient(145deg, #FFFEFA 0%, #FBF6ED 100%);
+            padding: 1.25rem 1.5rem;
             border-radius: 12px;
-            border: 2px solid #C4A574;
-            box-shadow: 3px 3px 8px rgba(61, 41, 20, 0.15);
+            border: 1px solid #D4C5A9;
+            box-shadow: 0 4px 15px rgba(74, 55, 40, 0.08),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+            transition: all 0.3s ease;
         }}
         
         [data-testid="stMetric"]:hover {{
-            background-color: #FFF9E6;
-            border-color: #8B4513;
-            box-shadow: 4px 4px 12px rgba(61, 41, 20, 0.25);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(74, 55, 40, 0.12),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+            border-color: #B8A88A;
         }}
         
-        /* Metric label - dark brown, readable */
+        /* Metric label */
         [data-testid="stMetric"] label {{
-            color: #5D4023 !important;
+            color: #6B5B4A !important;
             font-weight: 600 !important;
-            font-size: 0.95rem !important;
+            font-size: 0.85rem !important;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }}
         
-        /* Metric value - dark brown */
+        /* Metric value */
         [data-testid="stMetric"] [data-testid="stMetricValue"] {{
-            color: #3D2914 !important;
+            color: #3D3428 !important;
+            font-family: 'Libre Baskerville', serif !important;
             font-weight: 700 !important;
+            font-size: 1.8rem !important;
         }}
         
-        /* Metric delta - keep green/red for positive/negative */
-        [data-testid="stMetric"] [data-testid="stMetricDelta"] svg {{
-            stroke: #2E7D32;
+        /* Metric delta positive */
+        [data-testid="stMetric"] [data-testid="stMetricDelta"] {{
+            font-weight: 600 !important;
         }}
         
-        /* Sidebar - slightly darker parchment */
-        [data-testid="stSidebar"] {{
-            background-color: #EDD9B4;
-            border-right: 3px solid #C4A574;
-        }}
+        /* ============================================
+           BUTTONS
+           ============================================ */
         
-        [data-testid="stSidebar"] [data-testid="stMarkdown"] {{
-            color: #3D2914;
-        }}
-        
-        /* Headers - brown color */
-        h1, h2, h3 {{
-            color: #5D3A1A !important;
-        }}
-        
-        /* Expanders - parchment style */
-        [data-testid="stExpander"] {{
-            background-color: #FDF8E8;
-            border: 1px solid #C4A574;
-            border-radius: 8px;
-        }}
-        
-        /* Buttons - brown theme */
         .stButton > button {{
-            background-color: #8B4513;
-            color: #FDF8E8;
+            background: linear-gradient(145deg, #7A6347 0%, #5D4A36 100%);
+            color: #FBF6ED !important;
             border: none;
             border-radius: 8px;
+            padding: 0.6rem 1.5rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+            box-shadow: 0 3px 10px rgba(74, 55, 40, 0.2);
         }}
         
         .stButton > button:hover {{
-            background-color: #A0522D;
-            color: #FFFFFF;
+            background: linear-gradient(145deg, #8B7355 0%, #6B5344 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 5px 15px rgba(74, 55, 40, 0.25);
+        }}
+        
+        .stButton > button:active {{
+            transform: translateY(0);
         }}
         
         /* Download buttons */
         .stDownloadButton > button {{
-            background-color: #6B4423;
-            color: #FDF8E8;
-            border: 2px solid #8B4513;
+            background: linear-gradient(145deg, #6B5B4A 0%, #4A3F35 100%);
+            color: #FBF6ED !important;
+            border: none;
+            border-radius: 8px;
+            padding: 0.6rem 1.2rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 3px 10px rgba(74, 55, 40, 0.15);
         }}
         
         .stDownloadButton > button:hover {{
-            background-color: #8B4513;
+            background: linear-gradient(145deg, #7A6B5A 0%, #5D4E37 100%);
+            transform: translateY(-1px);
         }}
         
-        /* Selectbox and inputs */
-        [data-testid="stSelectbox"] {{
-            background-color: #FDF8E8;
+        /* ============================================
+           EXPANDERS
+           ============================================ */
+        
+        [data-testid="stExpander"] {{
+            background-color: #FFFEFA;
+            border: 1px solid #D4C5A9;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 0.5rem;
+            box-shadow: 0 2px 8px rgba(74, 55, 40, 0.06);
         }}
         
-        /* Checkbox */
-        [data-testid="stCheckbox"] label span {{
-            color: #3D2914 !important;
+        [data-testid="stExpander"]:hover {{
+            border-color: #B8A88A;
         }}
         
-        /* Info boxes */
-        .stAlert {{
-            background-color: #FDF8E8;
-            border: 1px solid #C4A574;
+        /* Expander header */
+        [data-testid="stExpander"] summary {{
+            padding: 1rem 1.25rem;
+            font-weight: 600;
+            color: #4A3F35 !important;
+            background-color: #FAF5E8;
         }}
         
-        /* Markdown text */
-        .stMarkdown {{
-            color: #3D2914;
+        [data-testid="stExpander"] summary:hover {{
+            background-color: #F5EFE0;
         }}
         
-        /* Captions */
-        .stCaption {{
-            color: #6B5344 !important;
+        /* Expander header text - IMPORTANT FIX */
+        [data-testid="stExpander"] summary span {{
+            color: #4A3F35 !important;
+            font-weight: 600 !important;
         }}
         
-        /* RTL support */
-        .main .block-container {{
-            direction: {direction};
-            text-align: {text_align};
+        /* Expander content */
+        [data-testid="stExpander"] [data-testid="stExpanderDetails"] {{
+            padding: 1rem;
+            background-color: #FFFEFA;
         }}
         
-        /* Divider lines */
-        hr {{
-            border-color: #C4A574;
-        }}
+        /* ============================================
+           DATAFRAMES / TABLES
+           ============================================ */
         
-        /* DataFrame/tables */
         [data-testid="stDataFrame"] {{
-            background-color: #FDF8E8;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(74, 55, 40, 0.08);
+        }}
+        
+        [data-testid="stDataFrame"] > div {{
+            background-color: #FFFEFA;
+        }}
+        
+        /* ============================================
+           DIVIDERS
+           ============================================ */
+        
+        hr {{
+            border: none;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #C4B59B, transparent);
+            margin: 2rem 0;
+        }}
+        
+        /* ============================================
+           INFO / ALERTS
+           ============================================ */
+        
+        .stAlert {{
+            background-color: #FAF5E8;
+            border: 1px solid #D4C5A9;
             border-radius: 8px;
+            color: #4A3F35;
+        }}
+        
+        /* ============================================
+           PLOTLY CHARTS CONTAINER
+           ============================================ */
+        
+        [data-testid="stPlotlyChart"] {{
+            background-color: #FFFEFA;
+            border-radius: 12px;
+            padding: 1rem;
+            box-shadow: 0 4px 15px rgba(74, 55, 40, 0.08);
+            border: 1px solid #E8DCC8;
+        }}
+        
+        /* ============================================
+           MARKDOWN TEXT
+           ============================================ */
+        
+        .stMarkdown {{
+            color: #4A3F35;
+        }}
+        
+        .stMarkdown strong {{
+            color: #3D3428 !important;
+            font-weight: 700;
+        }}
+        
+        .stMarkdown a {{
+            color: #6B5344 !important;
+            text-decoration: underline;
+        }}
+        
+        .stMarkdown a:hover {{
+            color: #8B7355 !important;
+        }}
+        
+        /* ============================================
+           CAPTIONS
+           ============================================ */
+        
+        .stCaption, small {{
+            color: #7A6B5A !important;
+            font-size: 0.8rem !important;
+        }}
+        
+        /* ============================================
+           SCROLLBAR (optional nice touch)
+           ============================================ */
+        
+        ::-webkit-scrollbar {{
+            width: 8px;
+            height: 8px;
+        }}
+        
+        ::-webkit-scrollbar-track {{
+            background: #EDE0C8;
+        }}
+        
+        ::-webkit-scrollbar-thumb {{
+            background: #B8A88A;
+            border-radius: 4px;
+        }}
+        
+        ::-webkit-scrollbar-thumb:hover {{
+            background: #8B7355;
         }}
     </style>
     """, unsafe_allow_html=True)
@@ -1002,7 +1269,7 @@ df2_plot = df2_plot.rename(columns={'Close': asset2_name})
 merged = pd.merge(df1_plot, df2_plot, on='Date', how='inner')
 merged_melted = merged.melt(id_vars=['Date'], var_name=t('asset'), value_name=t('prices'))
 
-# Create chart with parchment theme colors
+# Create chart with professional parchment theme colors
 chart_title = f"{t('normalized_prices') if show_normalized else t('prices')}: {asset1_name} {t('vs')} {asset2_name}"
 fig_main = px.line(
     merged_melted,
@@ -1010,7 +1277,7 @@ fig_main = px.line(
     y=t('prices'),
     color=t('asset'),
     title=chart_title,
-    color_discrete_map={asset1_name: '#8B4513', asset2_name: '#2E7D32'},
+    color_discrete_map={asset1_name: '#8B7355', asset2_name: '#4A7C59'},
     template='plotly_white'
 )
 
@@ -1020,11 +1287,20 @@ fig_main.update_layout(
     legend_title=t("asset"),
     hovermode="x unified",
     height=500,
-    paper_bgcolor='#FDF8E8',
-    plot_bgcolor='#FDF8E8',
-    font=dict(color='#3D2914'),
-    title_font=dict(color='#5D3A1A')
+    paper_bgcolor='rgba(0,0,0,0)',
+    plot_bgcolor='rgba(255,254,250,0.5)',
+    font=dict(family="Source Sans Pro, sans-serif", color='#4A3F35', size=12),
+    title_font=dict(family="Libre Baskerville, serif", color='#4A3728', size=18),
+    legend=dict(
+        bgcolor='rgba(255,254,250,0.8)',
+        bordercolor='#D4C5A9',
+        borderwidth=1
+    ),
+    xaxis=dict(gridcolor='#E8DCC8', linecolor='#C4B59B'),
+    yaxis=dict(gridcolor='#E8DCC8', linecolor='#C4B59B')
 )
+
+fig_main.update_traces(line=dict(width=2.5))
 
 st.plotly_chart(fig_main, use_container_width=True)
 
@@ -1046,8 +1322,8 @@ if show_drawdown:
         y=df1['Drawdown'],
         fill='tozeroy',
         name=asset1_name,
-        line=dict(color='#8B4513'),
-        fillcolor='rgba(139, 69, 19, 0.3)'
+        line=dict(color='#8B7355', width=2),
+        fillcolor='rgba(139, 115, 85, 0.2)'
     ))
     
     fig_dd.add_trace(go.Scatter(
@@ -1055,8 +1331,8 @@ if show_drawdown:
         y=df2['Drawdown'],
         fill='tozeroy',
         name=asset2_name,
-        line=dict(color='#2E7D32'),
-        fillcolor='rgba(46, 125, 50, 0.3)'
+        line=dict(color='#4A7C59', width=2),
+        fillcolor='rgba(74, 124, 89, 0.2)'
     ))
     
     fig_dd.update_layout(
@@ -1066,10 +1342,17 @@ if show_drawdown:
         template='plotly_white',
         hovermode="x unified",
         height=400,
-        paper_bgcolor='#FDF8E8',
-        plot_bgcolor='#FDF8E8',
-        font=dict(color='#3D2914'),
-        title_font=dict(color='#5D3A1A')
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(255,254,250,0.5)',
+        font=dict(family="Source Sans Pro, sans-serif", color='#4A3F35', size=12),
+        title_font=dict(family="Libre Baskerville, serif", color='#4A3728', size=16),
+        legend=dict(
+            bgcolor='rgba(255,254,250,0.8)',
+            bordercolor='#D4C5A9',
+            borderwidth=1
+        ),
+        xaxis=dict(gridcolor='#E8DCC8', linecolor='#C4B59B'),
+        yaxis=dict(gridcolor='#E8DCC8', linecolor='#C4B59B')
     )
     
     st.plotly_chart(fig_dd, use_container_width=True)
@@ -1092,15 +1375,16 @@ if show_volume:
     st.header(t("trading_volumes"))
     
     fig_vol = make_subplots(rows=2, cols=1, shared_xaxes=True,
-                            subplot_titles=(f"{t('volume')} {asset1_name}", f"{t('volume')} {asset2_name}"))
+                            subplot_titles=(f"{t('volume')} {asset1_name}", f"{t('volume')} {asset2_name}"),
+                            vertical_spacing=0.12)
     
     fig_vol.add_trace(
-        go.Bar(x=df1['Date'], y=df1['Volume'], name=asset1_name, marker_color='#8B4513'),
+        go.Bar(x=df1['Date'], y=df1['Volume'], name=asset1_name, marker_color='#8B7355', opacity=0.8),
         row=1, col=1
     )
     
     fig_vol.add_trace(
-        go.Bar(x=df2['Date'], y=df2['Volume'], name=asset2_name, marker_color='#2E7D32'),
+        go.Bar(x=df2['Date'], y=df2['Volume'], name=asset2_name, marker_color='#4A7C59', opacity=0.8),
         row=2, col=1
     )
     
@@ -1108,10 +1392,13 @@ if show_volume:
         height=500,
         template='plotly_white',
         showlegend=False,
-        paper_bgcolor='#FDF8E8',
-        plot_bgcolor='#FDF8E8',
-        font=dict(color='#3D2914')
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(255,254,250,0.5)',
+        font=dict(family="Source Sans Pro, sans-serif", color='#4A3F35', size=12)
     )
+    
+    fig_vol.update_xaxes(gridcolor='#E8DCC8', linecolor='#C4B59B')
+    fig_vol.update_yaxes(gridcolor='#E8DCC8', linecolor='#C4B59B')
     
     st.plotly_chart(fig_vol, use_container_width=True)
 
@@ -1161,15 +1448,17 @@ with col_corr2:
         title=f"{t('rolling_correlation')} ({window} {t('days')})",
         template='plotly_white'
     )
-    fig_corr.add_hline(y=0, line_dash="dash", line_color="#8B4513")
-    fig_corr.update_traces(line_color='#5D3A1A')
+    fig_corr.add_hline(y=0, line_dash="dash", line_color="#B8A88A", line_width=1.5)
+    fig_corr.update_traces(line=dict(color='#6B5B4A', width=2))
     fig_corr.update_layout(
         yaxis_title=t("overall_correlation"),
         height=300,
-        paper_bgcolor='#FDF8E8',
-        plot_bgcolor='#FDF8E8',
-        font=dict(color='#3D2914'),
-        title_font=dict(color='#5D3A1A')
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(255,254,250,0.5)',
+        font=dict(family="Source Sans Pro, sans-serif", color='#4A3F35', size=12),
+        title_font=dict(family="Libre Baskerville, serif", color='#4A3728', size=14),
+        xaxis=dict(gridcolor='#E8DCC8', linecolor='#C4B59B'),
+        yaxis=dict(gridcolor='#E8DCC8', linecolor='#C4B59B')
     )
     st.plotly_chart(fig_corr, use_container_width=True)
 
