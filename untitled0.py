@@ -865,6 +865,31 @@ def apply_custom_css():
             border-radius: 10px;
         }}
         
+        /* Fix expander content text visibility */
+        [data-testid="stExpander"] [data-testid="stMarkdownContainer"] {{
+            color: #3D3428 !important;
+        }}
+        
+        [data-testid="stExpander"] [data-testid="stMarkdownContainer"] p {{
+            color: #3D3428 !important;
+        }}
+        
+        [data-testid="stExpander"] [data-testid="stMarkdownContainer"] li {{
+            color: #3D3428 !important;
+        }}
+        
+        [data-testid="stExpander"] [data-testid="stMarkdownContainer"] strong {{
+            color: #2D2418 !important;
+        }}
+        
+        [data-testid="stExpander"] summary {{
+            color: #3D3428 !important;
+        }}
+        
+        [data-testid="stExpander"] summary span {{
+            color: #3D3428 !important;
+        }}
+        
         [data-testid="stPlotlyChart"] {{
             background-color: #FFFEFA;
             border-radius: 12px;
