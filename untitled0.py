@@ -934,6 +934,28 @@ def apply_custom_css():
             border: 1px solid #E8DCC8;
         }}
         
+        /* Download button styling - light background with dark text */
+        .stDownloadButton > button {{
+            background: linear-gradient(145deg, #FFFEFA 0%, #F5EFE0 100%) !important;
+            color: #3D3428 !important;
+            border: 2px solid #B8A88A !important;
+            border-radius: 10px;
+            padding: 0.7rem 1.5rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }}
+        
+        .stDownloadButton > button:hover {{
+            background: linear-gradient(145deg, #F5EFE0 0%, #EDE5D3 100%) !important;
+            border-color: #8B7355 !important;
+            transform: translateY(-1px);
+        }}
+        
+        .stDownloadButton > button span,
+        .stDownloadButton > button p {{
+            color: #3D3428 !important;
+        }}
+        
         .risk-gauge {{
             text-align: center;
             padding: 1rem;
@@ -1462,8 +1484,15 @@ with tab_comparison:
         xaxis_title=t("date"), yaxis_title=y_label,
         hovermode="x unified", height=450,
         paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='#FFFEFA',
-        font=dict(family="Source Sans Pro, sans-serif", color='#4A3F35'),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5)
+        font=dict(family="Source Sans Pro, sans-serif", color='#2D2418', size=12),
+        title=dict(font=dict(color='#2D2418', size=16)),
+        legend=dict(
+            orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5,
+            font=dict(color='#2D2418', size=12),
+            bgcolor='rgba(255,254,250,0.9)'
+        ),
+        xaxis=dict(tickfont=dict(color='#3D3428')),
+        yaxis=dict(tickfont=dict(color='#3D3428'))
     )
     fig_main.update_traces(line=dict(width=2.5))
     st.plotly_chart(fig_main, use_container_width=True)
@@ -1483,10 +1512,17 @@ with tab_comparison:
                                      line=dict(color='#1B6B4A', width=2), fillcolor='rgba(27, 107, 74, 0.25)'))
         
         fig_dd.update_layout(
-            title=t("drawdowns_from_ath"), xaxis_title=t("date"), yaxis_title="Drawdown (%)",
+            title=dict(text=t("drawdowns_from_ath"), font=dict(color='#2D2418', size=16)),
+            xaxis_title=t("date"), yaxis_title="Drawdown (%)",
             template='plotly_white', height=350, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='#FFFEFA',
-            font=dict(family="Source Sans Pro, sans-serif", color='#4A3F35'),
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5)
+            font=dict(family="Source Sans Pro, sans-serif", color='#2D2418', size=12),
+            legend=dict(
+                orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5,
+                font=dict(color='#2D2418', size=12),
+                bgcolor='rgba(255,254,250,0.9)'
+            ),
+            xaxis=dict(tickfont=dict(color='#3D3428')),
+            yaxis=dict(tickfont=dict(color='#3D3428'))
         )
         st.plotly_chart(fig_dd, use_container_width=True)
         
@@ -1507,7 +1543,11 @@ with tab_comparison:
         fig_vol.add_trace(go.Bar(x=df2['Date'], y=df2['Volume'], name=asset2_name, marker=dict(color='#1B6B4A')), row=2, col=1)
         
         fig_vol.update_layout(height=450, template='plotly_white', showlegend=False,
-                              paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='#FFFEFA')
+                              paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='#FFFEFA',
+                              font=dict(family="Source Sans Pro, sans-serif", color='#2D2418', size=12))
+        fig_vol.update_xaxes(tickfont=dict(color='#3D3428'))
+        fig_vol.update_yaxes(tickfont=dict(color='#3D3428'))
+        fig_vol.update_annotations(font=dict(color='#2D2418', size=14))
         st.plotly_chart(fig_vol, use_container_width=True)
     
     # Correlation
@@ -1535,8 +1575,14 @@ with tab_comparison:
         fig_corr = px.line(merged_corr, x='Date', y='Rolling_Corr', title=f"{t('rolling_correlation')} (30 {t('days')})")
         fig_corr.add_hline(y=0, line_dash="dash", line_color="#8B7355")
         fig_corr.update_traces(line=dict(color='#C45B28', width=2.5))
-        fig_corr.update_layout(yaxis_title=t("overall_correlation"), height=300,
-                               paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='#FFFEFA')
+        fig_corr.update_layout(
+            yaxis_title=t("overall_correlation"), height=300,
+            paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='#FFFEFA',
+            font=dict(family="Source Sans Pro, sans-serif", color='#2D2418', size=12),
+            title=dict(font=dict(color='#2D2418', size=14)),
+            xaxis=dict(tickfont=dict(color='#3D3428')),
+            yaxis=dict(tickfont=dict(color='#3D3428'))
+        )
         st.plotly_chart(fig_corr, use_container_width=True)
     
     # News
