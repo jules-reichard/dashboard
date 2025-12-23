@@ -823,6 +823,19 @@ def apply_custom_css():
             color: #4A3F35 !important;
         }}
         
+        /* Global fix for all text content */
+        div[data-testid="stMarkdownContainer"] p,
+        div[data-testid="stMarkdownContainer"] span,
+        div[data-testid="stMarkdownContainer"] li,
+        div[data-testid="stMarkdownContainer"] strong {{
+            color: #3D3428 !important;
+        }}
+        
+        /* Fix any div text that might be invisible */
+        .main div {{
+            color: #3D3428;
+        }}
+        
         [data-testid="stSidebar"] {{
             background: linear-gradient(180deg, #E8D9BE 0%, #DFD0B8 100%);
             border-right: 1px solid #C4B59B;
@@ -841,6 +854,29 @@ def apply_custom_css():
         [data-testid="stMetric"]:hover {{
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(74, 55, 40, 0.12);
+        }}
+        
+        /* Fix metric label visibility */
+        [data-testid="stMetric"] label {{
+            color: #5D4E37 !important;
+        }}
+        
+        /* Fix metric VALUE visibility - this is the main fix */
+        [data-testid="stMetric"] [data-testid="stMetricValue"] {{
+            color: #2D2418 !important;
+        }}
+        
+        [data-testid="stMetric"] [data-testid="stMetricValue"] div {{
+            color: #2D2418 !important;
+        }}
+        
+        /* Fix metric delta visibility */
+        [data-testid="stMetric"] [data-testid="stMetricDelta"] {{
+            color: #3D3428 !important;
+        }}
+        
+        [data-testid="stMetric"] [data-testid="stMetricDelta"] svg {{
+            fill: #3D3428 !important;
         }}
         
         .stButton > button {{
