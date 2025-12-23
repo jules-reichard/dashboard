@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Financial Dashboard - Multi-asset Comparison
-Enhanced version with metrics, drawdowns, news, and multilingual support
+Enhanced version with metrics, drawdowns, news, multilingual support, and Credit Risk Analysis
 """
 
 import streamlit as st
@@ -14,7 +14,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import feedparser
 import requests
-import json
+from scipy.stats import norm
 
 # =============================================================================
 # TRANSLATIONS
@@ -126,6 +126,35 @@ TRANSLATIONS = {
         "economic_indicators": "Key Economic Indicators",
         "ai_analysis": "AI Economic Analysis",
         "last_analysis": "Analysis generated on",
+        
+        # Credit Risk Analysis
+        "credit_risk": "🏦 Credit Risk Analysis",
+        "credit_risk_title": "Credit Risk Analysis",
+        "enter_ticker": "Enter ticker symbol",
+        "analyze_button": "Analyze Credit Risk",
+        "merton_model": "Merton Structural Model",
+        "ml_model": "ML Model (Historical)",
+        "distance_to_default": "Distance to Default",
+        "probability_of_default": "Probability of Default",
+        "risk_category": "Risk Category",
+        "very_low_risk": "Very Low Risk",
+        "low_risk": "Low Risk",
+        "moderate_risk": "Moderate Risk",
+        "high_risk": "High Risk",
+        "very_high_risk": "Very High Risk",
+        "model_inputs": "Model Inputs",
+        "market_cap": "Market Cap",
+        "total_debt": "Total Debt",
+        "asset_value": "Asset Value (V)",
+        "equity_volatility": "Equity Volatility",
+        "risk_free_rate": "Risk-Free Rate",
+        "time_horizon": "Time Horizon",
+        "merton_explanation": "The Merton model treats equity as a call option on firm assets. Default occurs if asset value falls below debt at maturity.",
+        "ml_explanation": "ML model trained on historical bankruptcy data (1999-2018). Note: Live predictions require feature mapping from financial statements.",
+        "data_unavailable": "Required financial data not available for this ticker.",
+        "analyzing": "Analyzing credit risk...",
+        "credit_risk_comparison": "Credit Risk Comparison",
+        "benchmark_companies": "Benchmark Companies",
     },
     
     "Français": {
@@ -234,18 +263,44 @@ TRANSLATIONS = {
         "economic_indicators": "Indicateurs Économiques Clés",
         "ai_analysis": "Analyse Économique IA",
         "last_analysis": "Analyse générée le",
+        
+        # Credit Risk Analysis
+        "credit_risk": "🏦 Analyse du Risque de Crédit",
+        "credit_risk_title": "Analyse du Risque de Crédit",
+        "enter_ticker": "Entrez le symbole boursier",
+        "analyze_button": "Analyser le Risque de Crédit",
+        "merton_model": "Modèle Structurel de Merton",
+        "ml_model": "Modèle ML (Historique)",
+        "distance_to_default": "Distance au Défaut",
+        "probability_of_default": "Probabilité de Défaut",
+        "risk_category": "Catégorie de Risque",
+        "very_low_risk": "Risque Très Faible",
+        "low_risk": "Risque Faible",
+        "moderate_risk": "Risque Modéré",
+        "high_risk": "Risque Élevé",
+        "very_high_risk": "Risque Très Élevé",
+        "model_inputs": "Entrées du Modèle",
+        "market_cap": "Capitalisation Boursière",
+        "total_debt": "Dette Totale",
+        "asset_value": "Valeur des Actifs (V)",
+        "equity_volatility": "Volatilité des Actions",
+        "risk_free_rate": "Taux Sans Risque",
+        "time_horizon": "Horizon Temporel",
+        "merton_explanation": "Le modèle de Merton traite les capitaux propres comme une option d'achat sur les actifs de l'entreprise.",
+        "ml_explanation": "Modèle ML entraîné sur des données historiques de faillite (1999-2018).",
+        "data_unavailable": "Données financières requises non disponibles pour ce ticker.",
+        "analyzing": "Analyse du risque de crédit en cours...",
+        "credit_risk_comparison": "Comparaison du Risque de Crédit",
+        "benchmark_companies": "Entreprises de Référence",
     },
     
     "Español": {
-        # General
         "page_title": "Panel Financiero",
         "main_title": "📈 Panel Financiero",
         "comparison": "Comparación",
         "vs": "vs",
         "years": "años",
         "over": "durante",
-        
-        # Sidebar
         "settings": "⚙️ Configuración",
         "language": "🌐 Idioma",
         "asset_selection": "Selección de activos",
@@ -260,21 +315,15 @@ TRANSLATIONS = {
         "refresh_data": "🔄 Actualizar datos",
         "last_update": "Última actualización",
         "created_with": "Panel creado con Streamlit",
-        
-        # Asset categories
         "cryptocurrencies": "Criptomonedas",
         "indices": "Índices",
         "tech_stocks": "Acciones tecnológicas",
         "commodities": "Materias primas",
-        
-        # Metrics
         "key_metrics": "📊 Métricas clave",
         "return": "Rendimiento",
         "volatility": "Volatilidad",
         "current_price": "Precio actual",
         "sharpe": "Sharpe",
-        
-        # Charts
         "performance_comparison": "📈 Comparación de rendimiento",
         "normalized_prices": "Precios normalizados",
         "prices": "Precios",
@@ -282,17 +331,11 @@ TRANSLATIONS = {
         "price_usd": "Precio ($)",
         "date": "Fecha",
         "asset": "Activo",
-        
-        # Drawdowns
         "drawdowns_title": "📉 Drawdowns (pérdidas desde máximos)",
         "drawdowns_from_ath": "Drawdowns desde máximos históricos",
         "max_drawdown": "Drawdown máximo",
-        
-        # Volume
         "trading_volumes": "📊 Volúmenes de negociación",
         "volume": "Volumen",
-        
-        # Correlation
         "correlation_analysis": "🔗 Análisis de correlación",
         "overall_correlation": "Correlación global",
         "rolling_correlation": "Correlación móvil",
@@ -302,26 +345,16 @@ TRANSLATIONS = {
         "moderate": "Correlación moderada",
         "weak": "Correlación débil",
         "negative": "Correlación negativa",
-        
-        # News
         "recent_news": "📰 Noticias recientes",
         "no_news": "No hay noticias disponibles",
-        
-        # Data
         "raw_data": "📋 Datos brutos",
         "view_data": "Ver datos",
         "merged_data": "Ver datos combinados",
-        
-        # Export
         "export_data": "💾 Exportar datos",
         "download": "📥 Descargar",
-        
-        # Errors
         "loading_data": "Cargando datos...",
         "error_loading": "No se pueden cargar los datos. Inténtelo de nuevo más tarde.",
         "error_fetching": "Error al cargar",
-        
-        # Economic Analysis
         "economic_analysis": "🌍 Análisis Económico por Continente",
         "select_continent": "Seleccionar un continente",
         "generate_analysis": "Generar Análisis",
@@ -342,18 +375,42 @@ TRANSLATIONS = {
         "economic_indicators": "Indicadores Económicos Clave",
         "ai_analysis": "Análisis Económico IA",
         "last_analysis": "Análisis generado el",
+        "credit_risk": "🏦 Análisis de Riesgo de Crédito",
+        "credit_risk_title": "Análisis de Riesgo de Crédito",
+        "enter_ticker": "Ingrese el símbolo bursátil",
+        "analyze_button": "Analizar Riesgo de Crédito",
+        "merton_model": "Modelo Estructural de Merton",
+        "ml_model": "Modelo ML (Histórico)",
+        "distance_to_default": "Distancia al Incumplimiento",
+        "probability_of_default": "Probabilidad de Incumplimiento",
+        "risk_category": "Categoría de Riesgo",
+        "very_low_risk": "Riesgo Muy Bajo",
+        "low_risk": "Riesgo Bajo",
+        "moderate_risk": "Riesgo Moderado",
+        "high_risk": "Riesgo Alto",
+        "very_high_risk": "Riesgo Muy Alto",
+        "model_inputs": "Entradas del Modelo",
+        "market_cap": "Capitalización de Mercado",
+        "total_debt": "Deuda Total",
+        "asset_value": "Valor de Activos (V)",
+        "equity_volatility": "Volatilidad de Acciones",
+        "risk_free_rate": "Tasa Libre de Riesgo",
+        "time_horizon": "Horizonte Temporal",
+        "merton_explanation": "El modelo de Merton trata el capital como una opción de compra sobre los activos de la empresa.",
+        "ml_explanation": "Modelo ML entrenado con datos históricos de quiebra (1999-2018).",
+        "data_unavailable": "Datos financieros requeridos no disponibles para este ticker.",
+        "analyzing": "Analizando riesgo de crédito...",
+        "credit_risk_comparison": "Comparación de Riesgo de Crédito",
+        "benchmark_companies": "Empresas de Referencia",
     },
     
     "中文": {
-        # General
         "page_title": "金融仪表板",
         "main_title": "📈 金融仪表板",
         "comparison": "比较",
         "vs": "与",
         "years": "年",
         "over": "期间",
-        
-        # Sidebar
         "settings": "⚙️ 设置",
         "language": "🌐 语言",
         "asset_selection": "资产选择",
@@ -368,21 +425,15 @@ TRANSLATIONS = {
         "refresh_data": "🔄 刷新数据",
         "last_update": "最后更新",
         "created_with": "使用Streamlit创建的仪表板",
-        
-        # Asset categories
         "cryptocurrencies": "加密货币",
         "indices": "指数",
         "tech_stocks": "科技股",
         "commodities": "大宗商品",
-        
-        # Metrics
         "key_metrics": "📊 关键指标",
         "return": "回报率",
         "volatility": "波动率",
         "current_price": "当前价格",
         "sharpe": "夏普比率",
-        
-        # Charts
         "performance_comparison": "📈 绩效比较",
         "normalized_prices": "标准化价格",
         "prices": "价格",
@@ -390,17 +441,11 @@ TRANSLATIONS = {
         "price_usd": "价格 ($)",
         "date": "日期",
         "asset": "资产",
-        
-        # Drawdowns
         "drawdowns_title": "📉 回撤（从峰值的损失）",
         "drawdowns_from_ath": "从历史高点的回撤",
         "max_drawdown": "最大回撤",
-        
-        # Volume
         "trading_volumes": "📊 交易量",
         "volume": "成交量",
-        
-        # Correlation
         "correlation_analysis": "🔗 相关性分析",
         "overall_correlation": "总体相关性",
         "rolling_correlation": "滚动相关性",
@@ -410,26 +455,16 @@ TRANSLATIONS = {
         "moderate": "中等相关",
         "weak": "弱相关",
         "negative": "负相关",
-        
-        # News
         "recent_news": "📰 最新消息",
         "no_news": "暂无新闻",
-        
-        # Data
         "raw_data": "📋 原始数据",
         "view_data": "查看数据",
         "merged_data": "查看合并数据",
-        
-        # Export
         "export_data": "💾 导出数据",
         "download": "📥 下载",
-        
-        # Errors
         "loading_data": "加载数据中...",
         "error_loading": "无法加载数据，请稍后再试。",
         "error_fetching": "获取数据时出错",
-        
-        # Economic Analysis
         "economic_analysis": "🌍 各大洲经济分析",
         "select_continent": "选择一个大洲",
         "generate_analysis": "生成分析",
@@ -450,18 +485,42 @@ TRANSLATIONS = {
         "economic_indicators": "关键经济指标",
         "ai_analysis": "AI经济分析",
         "last_analysis": "分析生成于",
+        "credit_risk": "🏦 信用风险分析",
+        "credit_risk_title": "信用风险分析",
+        "enter_ticker": "输入股票代码",
+        "analyze_button": "分析信用风险",
+        "merton_model": "Merton结构模型",
+        "ml_model": "机器学习模型（历史）",
+        "distance_to_default": "违约距离",
+        "probability_of_default": "违约概率",
+        "risk_category": "风险类别",
+        "very_low_risk": "极低风险",
+        "low_risk": "低风险",
+        "moderate_risk": "中等风险",
+        "high_risk": "高风险",
+        "very_high_risk": "极高风险",
+        "model_inputs": "模型输入",
+        "market_cap": "市值",
+        "total_debt": "总债务",
+        "asset_value": "资产价值 (V)",
+        "equity_volatility": "股权波动率",
+        "risk_free_rate": "无风险利率",
+        "time_horizon": "时间范围",
+        "merton_explanation": "Merton模型将股权视为公司资产的看涨期权。",
+        "ml_explanation": "基于历史破产数据（1999-2018）训练的ML模型。",
+        "data_unavailable": "此股票代码的必要财务数据不可用。",
+        "analyzing": "正在分析信用风险...",
+        "credit_risk_comparison": "信用风险比较",
+        "benchmark_companies": "基准公司",
     },
     
     "Русский": {
-        # General
         "page_title": "Финансовая панель",
         "main_title": "📈 Финансовая панель",
         "comparison": "Сравнение",
         "vs": "и",
         "years": "лет",
         "over": "за",
-        
-        # Sidebar
         "settings": "⚙️ Настройки",
         "language": "🌐 Язык",
         "asset_selection": "Выбор активов",
@@ -476,21 +535,15 @@ TRANSLATIONS = {
         "refresh_data": "🔄 Обновить данные",
         "last_update": "Последнее обновление",
         "created_with": "Панель создана с помощью Streamlit",
-        
-        # Asset categories
         "cryptocurrencies": "Криптовалюты",
         "indices": "Индексы",
         "tech_stocks": "Технологические акции",
         "commodities": "Сырьевые товары",
-        
-        # Metrics
         "key_metrics": "📊 Ключевые показатели",
         "return": "Доходность",
         "volatility": "Волатильность",
         "current_price": "Текущая цена",
         "sharpe": "Шарп",
-        
-        # Charts
         "performance_comparison": "📈 Сравнение эффективности",
         "normalized_prices": "Нормализованные цены",
         "prices": "Цены",
@@ -498,17 +551,11 @@ TRANSLATIONS = {
         "price_usd": "Цена ($)",
         "date": "Дата",
         "asset": "Актив",
-        
-        # Drawdowns
         "drawdowns_title": "📉 Просадки (потери от максимума)",
         "drawdowns_from_ath": "Просадки от исторических максимумов",
         "max_drawdown": "Макс. просадка",
-        
-        # Volume
         "trading_volumes": "📊 Объёмы торгов",
         "volume": "Объём",
-        
-        # Correlation
         "correlation_analysis": "🔗 Анализ корреляции",
         "overall_correlation": "Общая корреляция",
         "rolling_correlation": "Скользящая корреляция",
@@ -518,26 +565,16 @@ TRANSLATIONS = {
         "moderate": "Умеренная корреляция",
         "weak": "Слабая корреляция",
         "negative": "Отрицательная корреляция",
-        
-        # News
         "recent_news": "📰 Последние новости",
         "no_news": "Новостей нет",
-        
-        # Data
         "raw_data": "📋 Исходные данные",
         "view_data": "Посмотреть данные",
         "merged_data": "Посмотреть объединённые данные",
-        
-        # Export
         "export_data": "💾 Экспорт данных",
         "download": "📥 Скачать",
-        
-        # Errors
         "loading_data": "Загрузка данных...",
         "error_loading": "Невозможно загрузить данные. Попробуйте позже.",
         "error_fetching": "Ошибка при загрузке",
-        
-        # Economic Analysis
         "economic_analysis": "🌍 Экономический Анализ по Континентам",
         "select_continent": "Выберите континент",
         "generate_analysis": "Создать анализ",
@@ -558,18 +595,42 @@ TRANSLATIONS = {
         "economic_indicators": "Ключевые Экономические Показатели",
         "ai_analysis": "ИИ Экономический Анализ",
         "last_analysis": "Анализ создан",
+        "credit_risk": "🏦 Анализ Кредитного Риска",
+        "credit_risk_title": "Анализ Кредитного Риска",
+        "enter_ticker": "Введите тикер",
+        "analyze_button": "Анализировать Кредитный Риск",
+        "merton_model": "Структурная Модель Мертона",
+        "ml_model": "ML Модель (Историческая)",
+        "distance_to_default": "Расстояние до Дефолта",
+        "probability_of_default": "Вероятность Дефолта",
+        "risk_category": "Категория Риска",
+        "very_low_risk": "Очень Низкий Риск",
+        "low_risk": "Низкий Риск",
+        "moderate_risk": "Умеренный Риск",
+        "high_risk": "Высокий Риск",
+        "very_high_risk": "Очень Высокий Риск",
+        "model_inputs": "Входные Данные Модели",
+        "market_cap": "Рыночная Капитализация",
+        "total_debt": "Общий Долг",
+        "asset_value": "Стоимость Активов (V)",
+        "equity_volatility": "Волатильность Акций",
+        "risk_free_rate": "Безрисковая Ставка",
+        "time_horizon": "Временной Горизонт",
+        "merton_explanation": "Модель Мертона рассматривает капитал как колл-опцион на активы компании.",
+        "ml_explanation": "ML модель обучена на исторических данных о банкротстве (1999-2018).",
+        "data_unavailable": "Необходимые финансовые данные недоступны для этого тикера.",
+        "analyzing": "Анализ кредитного риска...",
+        "credit_risk_comparison": "Сравнение Кредитного Риска",
+        "benchmark_companies": "Эталонные Компании",
     },
     
     "العربية": {
-        # General
         "page_title": "لوحة المعلومات المالية",
         "main_title": "📈 لوحة المعلومات المالية",
         "comparison": "مقارنة",
         "vs": "مقابل",
         "years": "سنوات",
         "over": "خلال",
-        
-        # Sidebar
         "settings": "⚙️ الإعدادات",
         "language": "🌐 اللغة",
         "asset_selection": "اختيار الأصول",
@@ -584,21 +645,15 @@ TRANSLATIONS = {
         "refresh_data": "🔄 تحديث البيانات",
         "last_update": "آخر تحديث",
         "created_with": "لوحة معلومات تم إنشاؤها باستخدام Streamlit",
-        
-        # Asset categories
         "cryptocurrencies": "العملات المشفرة",
         "indices": "المؤشرات",
         "tech_stocks": "أسهم التكنولوجيا",
         "commodities": "السلع",
-        
-        # Metrics
         "key_metrics": "📊 المؤشرات الرئيسية",
         "return": "العائد",
         "volatility": "التقلب",
         "current_price": "السعر الحالي",
         "sharpe": "شارب",
-        
-        # Charts
         "performance_comparison": "📈 مقارنة الأداء",
         "normalized_prices": "الأسعار المعيارية",
         "prices": "الأسعار",
@@ -606,17 +661,11 @@ TRANSLATIONS = {
         "price_usd": "السعر ($)",
         "date": "التاريخ",
         "asset": "الأصل",
-        
-        # Drawdowns
         "drawdowns_title": "📉 التراجعات (الخسائر من الذروة)",
         "drawdowns_from_ath": "التراجعات من أعلى المستويات التاريخية",
         "max_drawdown": "أقصى تراجع",
-        
-        # Volume
         "trading_volumes": "📊 أحجام التداول",
         "volume": "الحجم",
-        
-        # Correlation
         "correlation_analysis": "🔗 تحليل الارتباط",
         "overall_correlation": "الارتباط الكلي",
         "rolling_correlation": "الارتباط المتحرك",
@@ -626,26 +675,16 @@ TRANSLATIONS = {
         "moderate": "ارتباط معتدل",
         "weak": "ارتباط ضعيف",
         "negative": "ارتباط سلبي",
-        
-        # News
         "recent_news": "📰 آخر الأخبار",
         "no_news": "لا توجد أخبار متاحة",
-        
-        # Data
         "raw_data": "📋 البيانات الخام",
         "view_data": "عرض البيانات",
         "merged_data": "عرض البيانات المدمجة",
-        
-        # Export
         "export_data": "💾 تصدير البيانات",
         "download": "📥 تحميل",
-        
-        # Errors
         "loading_data": "جاري تحميل البيانات...",
         "error_loading": "تعذر تحميل البيانات. يرجى المحاولة مرة أخرى لاحقاً.",
         "error_fetching": "خطأ في جلب",
-        
-        # Economic Analysis
         "economic_analysis": "🌍 التحليل الاقتصادي حسب القارة",
         "select_continent": "اختر قارة",
         "generate_analysis": "إنشاء التحليل",
@@ -666,6 +705,33 @@ TRANSLATIONS = {
         "economic_indicators": "المؤشرات الاقتصادية الرئيسية",
         "ai_analysis": "التحليل الاقتصادي بالذكاء الاصطناعي",
         "last_analysis": "تم إنشاء التحليل في",
+        "credit_risk": "🏦 تحليل مخاطر الائتمان",
+        "credit_risk_title": "تحليل مخاطر الائتمان",
+        "enter_ticker": "أدخل رمز السهم",
+        "analyze_button": "تحليل مخاطر الائتمان",
+        "merton_model": "نموذج ميرتون الهيكلي",
+        "ml_model": "نموذج التعلم الآلي (تاريخي)",
+        "distance_to_default": "المسافة إلى التخلف عن السداد",
+        "probability_of_default": "احتمال التخلف عن السداد",
+        "risk_category": "فئة المخاطر",
+        "very_low_risk": "مخاطر منخفضة جداً",
+        "low_risk": "مخاطر منخفضة",
+        "moderate_risk": "مخاطر معتدلة",
+        "high_risk": "مخاطر عالية",
+        "very_high_risk": "مخاطر عالية جداً",
+        "model_inputs": "مدخلات النموذج",
+        "market_cap": "القيمة السوقية",
+        "total_debt": "إجمالي الديون",
+        "asset_value": "قيمة الأصول (V)",
+        "equity_volatility": "تقلب الأسهم",
+        "risk_free_rate": "معدل خالي من المخاطر",
+        "time_horizon": "الأفق الزمني",
+        "merton_explanation": "يعامل نموذج ميرتون حقوق الملكية كخيار شراء على أصول الشركة.",
+        "ml_explanation": "نموذج ML مدرب على بيانات الإفلاس التاريخية (1999-2018).",
+        "data_unavailable": "البيانات المالية المطلوبة غير متوفرة لهذا الرمز.",
+        "analyzing": "جاري تحليل مخاطر الائتمان...",
+        "credit_risk_comparison": "مقارنة مخاطر الائتمان",
+        "benchmark_companies": "الشركات المرجعية",
     },
 }
 
@@ -683,7 +749,7 @@ def t(key: str) -> str:
 
 
 # =============================================================================
-# PAGE CONFIGURATION (must be first Streamlit command)
+# PAGE CONFIGURATION
 # =============================================================================
 st.set_page_config(
     page_title="Financial Dashboard",
@@ -700,7 +766,7 @@ if "language" not in st.session_state:
 
 
 # =============================================================================
-# CUSTOM CSS - PROFESSIONAL PARCHMENT THEME
+# CUSTOM CSS
 # =============================================================================
 def apply_custom_css():
     """Apply custom CSS including RTL support and professional parchment theme."""
@@ -710,20 +776,13 @@ def apply_custom_css():
     
     st.markdown(f"""
     <style>
-        /* ============================================
-           GLOBAL STYLES
-           ============================================ */
-        
-        /* Import Google Font for professional look */
         @import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&family=Source+Sans+Pro:wght@400;600;700&display=swap');
         
-        /* Main app background */
         .stApp {{
             background: linear-gradient(135deg, #F5E6C8 0%, #EDE0C8 50%, #F0E4CE 100%);
             font-family: 'Source Sans Pro', sans-serif;
         }}
         
-        /* Main container */
         .main .block-container {{
             direction: {direction};
             text-align: {text_align};
@@ -731,11 +790,6 @@ def apply_custom_css():
             max-width: 1200px;
         }}
         
-        /* ============================================
-           TYPOGRAPHY
-           ============================================ */
-        
-        /* Main title */
         h1 {{
             font-family: 'Libre Baskerville', serif !important;
             color: #4A3728 !important;
@@ -746,7 +800,6 @@ def apply_custom_css():
             margin-bottom: 1.5rem !important;
         }}
         
-        /* Section headers */
         h2 {{
             font-family: 'Libre Baskerville', serif !important;
             color: #5D4E37 !important;
@@ -757,7 +810,6 @@ def apply_custom_css():
             border-left: 4px solid #8B7355;
         }}
         
-        /* Subsection headers */
         h3 {{
             font-family: 'Source Sans Pro', sans-serif !important;
             color: #6B5B4A !important;
@@ -767,14 +819,9 @@ def apply_custom_css():
             letter-spacing: 1px;
         }}
         
-        /* Paragraph text */
         p, span, label {{
             color: #4A3F35 !important;
         }}
-        
-        /* ============================================
-           SIDEBAR
-           ============================================ */
         
         [data-testid="stSidebar"] {{
             background: linear-gradient(180deg, #E8D9BE 0%, #DFD0B8 100%);
@@ -782,146 +829,19 @@ def apply_custom_css():
             box-shadow: 2px 0 10px rgba(74, 55, 40, 0.1);
         }}
         
-        [data-testid="stSidebar"] h2 {{
-            border-left: none !important;
-            border-bottom: 2px solid #A89880;
-            padding-bottom: 0.5rem;
-            padding-left: 0 !important;
-            font-size: 1.2rem !important;
-        }}
-        
-        [data-testid="stSidebar"] h3 {{
-            color: #5D4E37 !important;
-            font-size: 0.9rem !important;
-            margin-top: 1.5rem !important;
-            margin-bottom: 0.5rem !important;
-        }}
-        
-        /* Sidebar labels */
-        [data-testid="stSidebar"] label {{
-            color: #4A3F35 !important;
-            font-weight: 600 !important;
-            font-size: 0.85rem !important;
-        }}
-        
-        /* Sidebar caption */
-        [data-testid="stSidebar"] .stCaption {{
-            color: #7A6B5A !important;
-            font-size: 0.75rem !important;
-        }}
-        
-        /* ============================================
-           SELECTBOX / DROPDOWN
-           ============================================ */
-        
-        [data-testid="stSelectbox"] > div > div {{
-            background-color: #FFFEF9 !important;
-            border: 2px solid #B8A88A !important;
-            border-radius: 8px !important;
-            color: #3D3428 !important;
-            font-weight: 500 !important;
-            transition: all 0.2s ease;
-        }}
-        
-        [data-testid="stSelectbox"] > div > div:hover {{
-            border-color: #8B7355 !important;
-            box-shadow: 0 2px 8px rgba(74, 55, 40, 0.15);
-        }}
-        
-        [data-testid="stSelectbox"] > div > div:focus-within {{
-            border-color: #6B5344 !important;
-            box-shadow: 0 0 0 3px rgba(107, 83, 68, 0.2);
-        }}
-        
-        /* Selectbox label - IMPORTANT FIX */
-        [data-testid="stSelectbox"] > label {{
-            color: #4A3F35 !important;
-            font-weight: 600 !important;
-            font-size: 0.9rem !important;
-            margin-bottom: 0.3rem !important;
-        }}
-        
-        /* ============================================
-           SLIDER
-           ============================================ */
-        
-        [data-testid="stSlider"] > label {{
-            color: #4A3F35 !important;
-            font-weight: 600 !important;
-        }}
-        
-        [data-testid="stSlider"] [data-baseweb="slider"] {{
-            margin-top: 0.5rem;
-        }}
-        
-        /* Slider track */
-        [data-testid="stSlider"] [role="slider"] {{
-            background-color: #8B7355 !important;
-        }}
-        
-        /* ============================================
-           CHECKBOX
-           ============================================ */
-        
-        [data-testid="stCheckbox"] {{
-            padding: 0.3rem 0;
-        }}
-        
-        [data-testid="stCheckbox"] label {{
-            color: #4A3F35 !important;
-            font-weight: 500 !important;
-        }}
-        
-        [data-testid="stCheckbox"] label span[data-baseweb="checkbox"] {{
-            border-color: #8B7355 !important;
-        }}
-        
-        /* ============================================
-           METRIC CARDS
-           ============================================ */
-        
         [data-testid="stMetric"] {{
             background: linear-gradient(145deg, #FFFEFA 0%, #FBF6ED 100%);
             padding: 1.25rem 1.5rem;
             border-radius: 12px;
             border: 1px solid #D4C5A9;
-            box-shadow: 0 4px 15px rgba(74, 55, 40, 0.08),
-                        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+            box-shadow: 0 4px 15px rgba(74, 55, 40, 0.08);
             transition: all 0.3s ease;
         }}
         
         [data-testid="stMetric"]:hover {{
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(74, 55, 40, 0.12),
-                        inset 0 1px 0 rgba(255, 255, 255, 0.8);
-            border-color: #B8A88A;
+            box-shadow: 0 6px 20px rgba(74, 55, 40, 0.12);
         }}
-        
-        /* Metric label */
-        [data-testid="stMetric"] label {{
-            color: #6B5B4A !important;
-            font-weight: 600 !important;
-            font-size: 0.85rem !important;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }}
-        
-        /* Metric value */
-        [data-testid="stMetric"] [data-testid="stMetricValue"] {{
-            color: #3D3428 !important;
-            font-family: 'Libre Baskerville', serif !important;
-            font-weight: 700 !important;
-            font-size: 1.8rem !important;
-        }}
-        
-        /* Metric delta positive */
-        [data-testid="stMetric"] [data-testid="stMetricDelta"] {{
-            font-weight: 600 !important;
-        }}
-        
-        /* ============================================
-           BUTTONS
-           ============================================ */
         
         .stButton > button {{
             background: linear-gradient(145deg, #FFFEFA 0%, #F5EFE0 100%);
@@ -930,150 +850,20 @@ def apply_custom_css():
             border-radius: 10px;
             padding: 0.7rem 1.5rem;
             font-weight: 600;
-            font-size: 0.9rem;
-            letter-spacing: 0.3px;
             transition: all 0.3s ease;
-            box-shadow: 0 2px 8px rgba(74, 55, 40, 0.1);
         }}
         
         .stButton > button:hover {{
             background: linear-gradient(145deg, #F5EFE0 0%, #EDE5D3 100%);
             border-color: #8B7355;
             transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(74, 55, 40, 0.15);
         }}
-        
-        .stButton > button:active {{
-            transform: translateY(0);
-            box-shadow: 0 1px 4px rgba(74, 55, 40, 0.1);
-        }}
-        
-        /* Button text and icon */
-        .stButton > button span {{
-            color: #4A3F35 !important;
-        }}
-        
-        .stButton > button p {{
-            color: #4A3F35 !important;
-            margin: 0;
-        }}
-        
-        /* Download buttons - IMPROVED */
-        .stDownloadButton > button {{
-            background: linear-gradient(145deg, #5D4E37 0%, #4A3F35 100%);
-            color: #FFFEFA !important;
-            border: none;
-            border-radius: 8px;
-            padding: 0.75rem 1.5rem;
-            font-weight: 600;
-            font-size: 0.9rem;
-            letter-spacing: 0.3px;
-            transition: all 0.3s ease;
-            box-shadow: 0 3px 10px rgba(74, 55, 40, 0.2);
-            min-width: 200px;
-            white-space: nowrap;
-        }}
-        
-        .stDownloadButton > button:hover {{
-            background: linear-gradient(145deg, #6B5B4A 0%, #5D4E37 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(74, 55, 40, 0.25);
-        }}
-        
-        .stDownloadButton > button:active {{
-            transform: translateY(0);
-        }}
-        
-        /* Fix text visibility inside download button */
-        .stDownloadButton > button span {{
-            color: #FFFEFA !important;
-        }}
-        
-        .stDownloadButton > button p {{
-            color: #FFFEFA !important;
-            margin: 0;
-        }}
-        
-        /* ============================================
-           EXPANDERS
-           ============================================ */
         
         [data-testid="stExpander"] {{
             background-color: #FFFEFA;
             border: 1px solid #D4C5A9;
             border-radius: 10px;
-            overflow: hidden;
-            margin-bottom: 0.5rem;
-            box-shadow: 0 2px 8px rgba(74, 55, 40, 0.06);
         }}
-        
-        [data-testid="stExpander"]:hover {{
-            border-color: #B8A88A;
-        }}
-        
-        /* Expander header */
-        [data-testid="stExpander"] summary {{
-            padding: 1rem 1.25rem;
-            font-weight: 600;
-            color: #4A3F35 !important;
-            background-color: #FAF5E8;
-        }}
-        
-        [data-testid="stExpander"] summary:hover {{
-            background-color: #F5EFE0;
-        }}
-        
-        /* Expander header text - IMPORTANT FIX */
-        [data-testid="stExpander"] summary span {{
-            color: #4A3F35 !important;
-            font-weight: 600 !important;
-        }}
-        
-        /* Expander content */
-        [data-testid="stExpander"] [data-testid="stExpanderDetails"] {{
-            padding: 1rem;
-            background-color: #FFFEFA;
-        }}
-        
-        /* ============================================
-           DATAFRAMES / TABLES
-           ============================================ */
-        
-        [data-testid="stDataFrame"] {{
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 2px 10px rgba(74, 55, 40, 0.08);
-        }}
-        
-        [data-testid="stDataFrame"] > div {{
-            background-color: #FFFEFA;
-        }}
-        
-        /* ============================================
-           DIVIDERS
-           ============================================ */
-        
-        hr {{
-            border: none;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, #C4B59B, transparent);
-            margin: 2rem 0;
-        }}
-        
-        /* ============================================
-           INFO / ALERTS
-           ============================================ */
-        
-        .stAlert {{
-            background-color: #FAF5E8;
-            border: 1px solid #D4C5A9;
-            border-radius: 8px;
-            color: #4A3F35;
-        }}
-        
-        /* ============================================
-           PLOTLY CHARTS CONTAINER
-           ============================================ */
         
         [data-testid="stPlotlyChart"] {{
             background-color: #FFFEFA;
@@ -1083,270 +873,18 @@ def apply_custom_css():
             border: 1px solid #E8DCC8;
         }}
         
-        /* ============================================
-           MARKDOWN TEXT
-           ============================================ */
-        
-        .stMarkdown {{
-            color: #4A3F35;
+        .risk-gauge {{
+            text-align: center;
+            padding: 1rem;
+            border-radius: 10px;
+            margin: 0.5rem 0;
         }}
         
-        .stMarkdown strong {{
-            color: #3D3428 !important;
-            font-weight: 700;
-        }}
-        
-        .stMarkdown a {{
-            color: #6B5344 !important;
-            text-decoration: underline;
-        }}
-        
-        .stMarkdown a:hover {{
-            color: #8B7355 !important;
-        }}
-        
-        /* ============================================
-           CAPTIONS
-           ============================================ */
-        
-        .stCaption, small {{
-            color: #7A6B5A !important;
-            font-size: 0.8rem !important;
-        }}
-        
-        /* ============================================
-           SCROLLBAR (optional nice touch)
-           ============================================ */
-        
-        ::-webkit-scrollbar {{
-            width: 8px;
-            height: 8px;
-        }}
-        
-        ::-webkit-scrollbar-track {{
-            background: #EDE0C8;
-        }}
-        
-        ::-webkit-scrollbar-thumb {{
-            background: #B8A88A;
-            border-radius: 4px;
-        }}
-        
-        ::-webkit-scrollbar-thumb:hover {{
-            background: #8B7355;
-        }}
-        
-        /* ============================================
-           RESPONSIVE DESIGN - TABLET (768px - 1024px)
-           ============================================ */
-        
-        @media screen and (max-width: 1024px) {{
-            /* Main container */
-            .main .block-container {{
-                padding-left: 1rem;
-                padding-right: 1rem;
-                max-width: 100%;
-            }}
-            
-            /* Title */
-            h1 {{
-                font-size: 1.8rem !important;
-            }}
-            
-            h2 {{
-                font-size: 1.3rem !important;
-            }}
-            
-            /* Metric cards */
-            [data-testid="stMetric"] {{
-                padding: 1rem;
-            }}
-            
-            [data-testid="stMetric"] [data-testid="stMetricValue"] {{
-                font-size: 1.5rem !important;
-            }}
-            
-            [data-testid="stMetric"] label {{
-                font-size: 0.75rem !important;
-            }}
-            
-            /* Buttons */
-            .stDownloadButton > button {{
-                min-width: 160px;
-                padding: 0.6rem 1rem;
-                font-size: 0.85rem;
-            }}
-            
-            .stButton > button {{
-                padding: 0.5rem 1rem;
-                font-size: 0.85rem;
-            }}
-        }}
-        
-        /* ============================================
-           RESPONSIVE DESIGN - MOBILE (< 768px)
-           ============================================ */
-        
-        @media screen and (max-width: 768px) {{
-            /* Hide sidebar by default on mobile */
-            [data-testid="stSidebar"] {{
-                min-width: 0 !important;
-                width: 100% !important;
-            }}
-            
-            /* Main container */
-            .main .block-container {{
-                padding-left: 0.5rem;
-                padding-right: 0.5rem;
-                padding-top: 1rem;
-            }}
-            
-            /* Typography */
-            h1 {{
-                font-size: 1.5rem !important;
-                padding-bottom: 0.3rem;
-                margin-bottom: 1rem !important;
-            }}
-            
-            h2 {{
-                font-size: 1.15rem !important;
-                padding-left: 0.4rem;
-                border-left-width: 3px;
-            }}
-            
-            h3 {{
-                font-size: 0.95rem !important;
-            }}
-            
-            /* Metric cards - stack nicely */
-            [data-testid="stMetric"] {{
-                padding: 0.8rem 1rem;
-                border-radius: 10px;
-                margin-bottom: 0.5rem;
-            }}
-            
-            [data-testid="stMetric"] [data-testid="stMetricValue"] {{
-                font-size: 1.3rem !important;
-            }}
-            
-            [data-testid="stMetric"] label {{
-                font-size: 0.7rem !important;
-                letter-spacing: 0.3px;
-            }}
-            
-            /* Buttons - full width on mobile */
-            .stButton > button {{
-                width: 100%;
-                padding: 0.7rem 1rem;
-                font-size: 0.9rem;
-            }}
-            
-            .stDownloadButton > button {{
-                width: 100%;
-                min-width: unset;
-                padding: 0.7rem 1rem;
-                font-size: 0.85rem;
-                margin-bottom: 0.5rem;
-            }}
-            
-            /* Expanders */
-            [data-testid="stExpander"] summary {{
-                padding: 0.8rem 1rem;
-                font-size: 0.9rem;
-            }}
-            
-            /* Charts container */
-            [data-testid="stPlotlyChart"] {{
-                padding: 0.5rem;
-                border-radius: 10px;
-            }}
-            
-            /* Selectbox */
-            [data-testid="stSelectbox"] > div > div {{
-                font-size: 0.9rem;
-            }}
-            
-            /* Dividers */
-            hr {{
-                margin: 1.5rem 0;
-            }}
-            
-            /* News section - single column */
-            [data-testid="stHorizontalBlock"] {{
-                flex-direction: column;
-            }}
-            
-            /* Correlation interpretation text */
-            .stMarkdown {{
-                font-size: 0.9rem;
-            }}
-        }}
-        
-        /* ============================================
-           RESPONSIVE DESIGN - SMALL MOBILE (< 480px)
-           ============================================ */
-        
-        @media screen and (max-width: 480px) {{
-            /* Even smaller adjustments */
-            h1 {{
-                font-size: 1.3rem !important;
-            }}
-            
-            h2 {{
-                font-size: 1.05rem !important;
-            }}
-            
-            [data-testid="stMetric"] {{
-                padding: 0.6rem 0.8rem;
-            }}
-            
-            [data-testid="stMetric"] [data-testid="stMetricValue"] {{
-                font-size: 1.1rem !important;
-            }}
-            
-            [data-testid="stMetric"] label {{
-                font-size: 0.65rem !important;
-            }}
-            
-            /* Sidebar adjustments */
-            [data-testid="stSidebar"] h2 {{
-                font-size: 1rem !important;
-            }}
-            
-            [data-testid="stSidebar"] h3 {{
-                font-size: 0.8rem !important;
-            }}
-        }}
-        
-        /* ============================================
-           TOUCH-FRIENDLY IMPROVEMENTS
-           ============================================ */
-        
-        @media (hover: none) and (pointer: coarse) {{
-            /* Larger touch targets */
-            .stButton > button,
-            .stDownloadButton > button {{
-                min-height: 48px;
-            }}
-            
-            [data-testid="stCheckbox"] {{
-                padding: 0.5rem 0;
-            }}
-            
-            [data-testid="stCheckbox"] label {{
-                font-size: 1rem !important;
-            }}
-            
-            /* Remove hover effects on touch devices */
-            [data-testid="stMetric"]:hover {{
-                transform: none;
-            }}
-            
-            .stButton > button:hover,
-            .stDownloadButton > button:hover {{
-                transform: none;
-            }}
-        }}
+        .risk-very-low {{ background-color: #d4edda; border: 2px solid #28a745; }}
+        .risk-low {{ background-color: #d1ecf1; border: 2px solid #17a2b8; }}
+        .risk-moderate {{ background-color: #fff3cd; border: 2px solid #ffc107; }}
+        .risk-high {{ background-color: #f8d7da; border: 2px solid #dc3545; }}
+        .risk-very-high {{ background-color: #721c24; border: 2px solid #721c24; color: white; }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -1384,7 +922,6 @@ ASSETS = {
     }
 }
 
-# Create flat list for selectbox
 ALL_ASSETS = {}
 for category, assets in ASSETS.items():
     ALL_ASSETS.update(assets)
@@ -1475,10 +1012,125 @@ def get_news(ticker: str) -> list:
 
 
 # =============================================================================
+# CREDIT RISK FUNCTIONS (MERTON MODEL)
+# =============================================================================
+def calculate_distance_to_default(V: float, D: float, sigma_V: float, r: float, T: float) -> float:
+    """
+    Calculate distance to default using Merton model.
+    
+    Parameters:
+    -----------
+    V : float - Asset value (market cap + debt proxy)
+    D : float - Debt face value (default barrier)
+    sigma_V : float - Asset volatility (annualized, as decimal)
+    r : float - Risk-free rate (as decimal)
+    T : float - Time horizon (years)
+    
+    Returns:
+    --------
+    float - Distance to default (in standard deviations)
+    """
+    if D <= 0 or V <= 0 or sigma_V <= 0 or T <= 0:
+        return 0.0
+    
+    numerator = np.log(V / D) + (r - 0.5 * sigma_V**2) * T
+    denominator = sigma_V * np.sqrt(T)
+    
+    return numerator / denominator
+
+
+def calculate_probability_of_default(DD: float) -> float:
+    """
+    Convert distance to default to probability of default.
+    
+    Parameters:
+    -----------
+    DD : float - Distance to default
+    
+    Returns:
+    --------
+    float - Probability of default (0 to 1)
+    """
+    return norm.cdf(-DD)
+
+
+def get_risk_category(pd_value: float) -> tuple:
+    """
+    Categorize risk based on probability of default.
+    
+    Returns:
+    --------
+    tuple - (category_key, css_class)
+    """
+    if pd_value < 0.01:
+        return ("very_low_risk", "risk-very-low")
+    elif pd_value < 0.05:
+        return ("low_risk", "risk-low")
+    elif pd_value < 0.15:
+        return ("moderate_risk", "risk-moderate")
+    elif pd_value < 0.30:
+        return ("high_risk", "risk-high")
+    else:
+        return ("very_high_risk", "risk-very-high")
+
+
+@st.cache_data(ttl=1800)
+def get_credit_risk_data(ticker: str) -> dict:
+    """
+    Fetch all data needed for credit risk analysis.
+    
+    Returns:
+    --------
+    dict with keys: market_cap, total_debt, cash, equity_volatility, company_name, success
+    """
+    try:
+        stock = yf.Ticker(ticker)
+        info = stock.info
+        
+        # Get market cap
+        market_cap = info.get('marketCap', None)
+        
+        # Get balance sheet data
+        balance_sheet = stock.balance_sheet
+        
+        total_debt = None
+        cash = None
+        
+        if not balance_sheet.empty:
+            bs = balance_sheet.T
+            if 'Total Debt' in bs.columns:
+                total_debt = bs['Total Debt'].iloc[0]
+            if 'Cash Cash Equivalents And Short Term Investments' in bs.columns:
+                cash = bs['Cash Cash Equivalents And Short Term Investments'].iloc[0]
+            elif 'Cash And Cash Equivalents' in bs.columns:
+                cash = bs['Cash And Cash Equivalents'].iloc[0]
+        
+        # Calculate equity volatility from historical prices
+        hist = stock.history(period="2y")
+        if not hist.empty and len(hist) > 20:
+            log_returns = np.log(hist['Close'] / hist['Close'].shift(1)).dropna()
+            daily_vol = log_returns.std()
+            annual_vol = daily_vol * np.sqrt(252)
+        else:
+            annual_vol = None
+        
+        company_name = info.get('longName', info.get('shortName', ticker))
+        
+        return {
+            'market_cap': market_cap,
+            'total_debt': total_debt,
+            'cash': cash,
+            'equity_volatility': annual_vol,
+            'company_name': company_name,
+            'success': market_cap is not None and total_debt is not None and annual_vol is not None
+        }
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
+
+
+# =============================================================================
 # AI ECONOMIC ANALYSIS FUNCTIONS
 # =============================================================================
-
-# Continent economic indicators (major indices and ETFs)
 CONTINENT_INDICATORS = {
     "north_america": {
         "indices": ["^GSPC", "^DJI", "^IXIC", "^GSPTSE"],
@@ -1538,11 +1190,9 @@ def get_continent_data(continent_key: str) -> dict:
 def generate_economic_analysis(continent_key: str, continent_name: str, api_key: str, language: str = "English") -> str:
     """Generate economic analysis using Groq API with Llama 3."""
     
-    # Get market data for context
     market_data = get_continent_data(continent_key)
     indicators = CONTINENT_INDICATORS.get(continent_key, {})
     
-    # Build market context
     market_context = ""
     for name, data in market_data.items():
         direction = "up" if data["change_1m"] > 0 else "down"
@@ -1550,7 +1200,6 @@ def generate_economic_analysis(continent_key: str, continent_name: str, api_key:
     
     countries = ", ".join(indicators.get("countries", []))
     
-    # Language instruction
     lang_instruction = {
         "English": "Respond in English.",
         "Français": "Réponds en français.",
@@ -1576,7 +1225,7 @@ Please provide:
 4. **Opportunities** (2-3 investment or growth opportunities)
 5. **Short-term Outlook** (1-2 sentences on what to expect in the next 3-6 months)
 
-Keep the analysis factual, balanced, and around 300-400 words total. Use the market data provided as context but also incorporate your knowledge of current economic conditions."""
+Keep the analysis factual, balanced, and around 300-400 words total."""
 
     try:
         response = requests.post(
@@ -1588,14 +1237,8 @@ Keep the analysis factual, balanced, and around 300-400 words total. Use the mar
             json={
                 "model": "llama-3.3-70b-versatile",
                 "messages": [
-                    {
-                        "role": "system",
-                        "content": "You are a professional economic analyst providing insights on global markets and regional economies. Be factual, balanced, and insightful."
-                    },
-                    {
-                        "role": "user", 
-                        "content": prompt
-                    }
+                    {"role": "system", "content": "You are a professional economic analyst."},
+                    {"role": "user", "content": prompt}
                 ],
                 "temperature": 0.7,
                 "max_tokens": 1000
@@ -1613,10 +1256,9 @@ Keep the analysis factual, balanced, and around 300-400 words total. Use the mar
 
 
 # =============================================================================
-# SIDEBAR - SETTINGS
+# SIDEBAR
 # =============================================================================
 with st.sidebar:
-    # Language selector (always at top)
     st.subheader(t("language"))
     language = st.selectbox(
         "Language",
@@ -1634,7 +1276,6 @@ with st.sidebar:
     
     st.subheader(t("asset_selection"))
     
-    # First asset
     asset1_name = st.selectbox(
         t("first_asset"),
         options=list(NAME_TO_TICKER.keys()),
@@ -1642,7 +1283,6 @@ with st.sidebar:
     )
     asset1_ticker = NAME_TO_TICKER[asset1_name]
     
-    # Second asset
     asset2_name = st.selectbox(
         t("second_asset"),
         options=list(NAME_TO_TICKER.keys()),
@@ -1670,17 +1310,15 @@ with st.sidebar:
 
 
 # =============================================================================
-# DATA LOADING
-# =============================================================================
-# =============================================================================
 # MAIN CONTENT WITH TABS
 # =============================================================================
 st.title(t("main_title"))
 
-# Create tabs for different sections
-tab_comparison, tab_economic = st.tabs([
+# Create tabs
+tab_comparison, tab_economic, tab_credit = st.tabs([
     f"📊 {t('performance_comparison')}", 
-    f"🌍 {t('economic_analysis')}"
+    f"🌍 {t('economic_analysis')}",
+    f"🏦 {t('credit_risk')}"
 ])
 
 # =============================================================================
@@ -1689,82 +1327,52 @@ tab_comparison, tab_economic = st.tabs([
 with tab_comparison:
     st.markdown(f"**{t('comparison')}:** {asset1_name} {t('vs')} {asset2_name} {t('over')} {years} {t('years')}")
     
-    # Load with spinner
     with st.spinner(t("loading_data")):
         df1 = load_asset_data(asset1_ticker, years)
         df2 = load_asset_data(asset2_ticker, years)
     
-    # Check data
     if df1.empty or df2.empty:
         st.error(t("error_loading"))
         st.stop()
     
-    # KEY METRICS
+    # Key Metrics
     st.header(t("key_metrics"))
     
     col1, col2, col3, col4 = st.columns(4)
     
     return1 = calculate_returns(df1['Close'])
     with col1:
-        st.metric(
-            label=f"{t('return')} {asset1_name}",
-            value=f"{return1:.1f}%",
-            delta=f"{return1:.1f}%" if return1 != 0 else None
-        )
+        st.metric(label=f"{t('return')} {asset1_name}", value=f"{return1:.1f}%",
+                  delta=f"{return1:.1f}%" if return1 != 0 else None)
     
     return2 = calculate_returns(df2['Close'])
     with col2:
-        st.metric(
-            label=f"{t('return')} {asset2_name}",
-            value=f"{return2:.1f}%",
-            delta=f"{return2:.1f}%" if return2 != 0 else None
-        )
+        st.metric(label=f"{t('return')} {asset2_name}", value=f"{return2:.1f}%",
+                  delta=f"{return2:.1f}%" if return2 != 0 else None)
     
     vol1 = calculate_volatility(df1['Close'])
     with col3:
-        st.metric(
-            label=f"{t('volatility')} {asset1_name}",
-            value=f"{vol1:.1f}%"
-        )
+        st.metric(label=f"{t('volatility')} {asset1_name}", value=f"{vol1:.1f}%")
     
     vol2 = calculate_volatility(df2['Close'])
     with col4:
-        st.metric(
-            label=f"{t('volatility')} {asset2_name}",
-            value=f"{vol2:.1f}%"
-        )
+        st.metric(label=f"{t('volatility')} {asset2_name}", value=f"{vol2:.1f}%")
     
     col5, col6, col7, col8 = st.columns(4)
     
     with col5:
-        current_price1 = df1['Close'].iloc[-1]
-        st.metric(
-            label=f"{t('current_price')} {asset1_name}",
-            value=f"${current_price1:,.2f}"
-        )
+        st.metric(label=f"{t('current_price')} {asset1_name}", value=f"${df1['Close'].iloc[-1]:,.2f}")
     
     with col6:
-        current_price2 = df2['Close'].iloc[-1]
-        st.metric(
-            label=f"{t('current_price')} {asset2_name}",
-            value=f"${current_price2:,.2f}"
-        )
+        st.metric(label=f"{t('current_price')} {asset2_name}", value=f"${df2['Close'].iloc[-1]:,.2f}")
     
     with col7:
-        sharpe1 = calculate_sharpe_ratio(df1['Close'])
-        st.metric(
-            label=f"{t('sharpe')} {asset1_name}",
-            value=f"{sharpe1:.2f}"
-        )
+        st.metric(label=f"{t('sharpe')} {asset1_name}", value=f"{calculate_sharpe_ratio(df1['Close']):.2f}")
     
     with col8:
-        sharpe2 = calculate_sharpe_ratio(df2['Close'])
-        st.metric(
-            label=f"{t('sharpe')} {asset2_name}",
-            value=f"{sharpe2:.2f}"
-        )
+        st.metric(label=f"{t('sharpe')} {asset2_name}", value=f"{calculate_sharpe_ratio(df2['Close']):.2f}")
     
-    # MAIN CHART - COMPARISON
+    # Main Chart
     st.markdown("---")
     st.header(t("performance_comparison"))
     
@@ -1785,47 +1393,21 @@ with tab_comparison:
     merged_melted = merged.melt(id_vars=['Date'], var_name=t('asset'), value_name=t('prices'))
     
     chart_title = f"{t('normalized_prices') if show_normalized else t('prices')}: {asset1_name} {t('vs')} {asset2_name}"
-    fig_main = px.line(
-        merged_melted,
-        x='Date',
-        y=t('prices'),
-        color=t('asset'),
-        title=chart_title,
-        color_discrete_map={asset1_name: '#C45B28', asset2_name: '#1B6B4A'},
-        template='plotly_white'
-    )
+    fig_main = px.line(merged_melted, x='Date', y=t('prices'), color=t('asset'), title=chart_title,
+                       color_discrete_map={asset1_name: '#C45B28', asset2_name: '#1B6B4A'},
+                       template='plotly_white')
     
     fig_main.update_layout(
-        xaxis_title=t("date"),
-        yaxis_title=y_label,
-        legend_title=dict(text=t("asset"), font=dict(color='#4A3F35', size=13, family="Source Sans Pro, sans-serif")),
-        hovermode="x unified",
-        height=450,
-        margin=dict(l=20, r=20, t=60, b=40),
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='#FFFEFA',
-        font=dict(family="Source Sans Pro, sans-serif", color='#4A3F35', size=12),
-        title_font=dict(family="Libre Baskerville, serif", color='#4A3728', size=16),
-        legend=dict(
-            bgcolor='#FFFEFA',
-            bordercolor='#C4B59B',
-            borderwidth=1,
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="center",
-            x=0.5,
-            font=dict(color='#3D3428', size=12),
-            title_font=dict(color='#4A3F35', size=12)
-        ),
-        xaxis=dict(gridcolor='#E0D5C0', linecolor='#B8A88A', tickfont=dict(color='#4A3F35')),
-        yaxis=dict(gridcolor='#E0D5C0', linecolor='#B8A88A', tickfont=dict(color='#4A3F35'))
+        xaxis_title=t("date"), yaxis_title=y_label,
+        hovermode="x unified", height=450,
+        paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='#FFFEFA',
+        font=dict(family="Source Sans Pro, sans-serif", color='#4A3F35'),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5)
     )
-    
     fig_main.update_traces(line=dict(width=2.5))
     st.plotly_chart(fig_main, use_container_width=True)
     
-    # DRAWDOWN CHART
+    # Drawdown Chart
     if show_drawdown:
         st.markdown("---")
         st.header(t("drawdowns_title"))
@@ -1834,153 +1416,69 @@ with tab_comparison:
         df2['Drawdown'] = calculate_drawdown(df2['Close'])
         
         fig_dd = go.Figure()
-        
-        fig_dd.add_trace(go.Scatter(
-            x=df1['Date'],
-            y=df1['Drawdown'],
-            fill='tozeroy',
-            name=asset1_name,
-            line=dict(color='#C45B28', width=2),
-            fillcolor='rgba(196, 91, 40, 0.25)'
-        ))
-        
-        fig_dd.add_trace(go.Scatter(
-            x=df2['Date'],
-            y=df2['Drawdown'],
-            fill='tozeroy',
-            name=asset2_name,
-            line=dict(color='#1B6B4A', width=2),
-            fillcolor='rgba(27, 107, 74, 0.25)'
-        ))
+        fig_dd.add_trace(go.Scatter(x=df1['Date'], y=df1['Drawdown'], fill='tozeroy', name=asset1_name,
+                                     line=dict(color='#C45B28', width=2), fillcolor='rgba(196, 91, 40, 0.25)'))
+        fig_dd.add_trace(go.Scatter(x=df2['Date'], y=df2['Drawdown'], fill='tozeroy', name=asset2_name,
+                                     line=dict(color='#1B6B4A', width=2), fillcolor='rgba(27, 107, 74, 0.25)'))
         
         fig_dd.update_layout(
-            title=dict(text=t("drawdowns_from_ath"), font=dict(family="Libre Baskerville, serif", color='#4A3728', size=14)),
-            xaxis_title=t("date"),
-            yaxis_title="Drawdown (%)",
-            template='plotly_white',
-            hovermode="x unified",
-            height=350,
-            margin=dict(l=20, r=20, t=50, b=40),
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='#FFFEFA',
-            font=dict(family="Source Sans Pro, sans-serif", color='#4A3F35', size=12),
-            legend=dict(
-                bgcolor='#FFFEFA',
-                bordercolor='#C4B59B',
-                borderwidth=1,
-                orientation="h",
-                yanchor="bottom",
-                y=1.02,
-                xanchor="center",
-                x=0.5,
-                font=dict(color='#3D3428', size=12)
-            ),
-            xaxis=dict(gridcolor='#E0D5C0', linecolor='#B8A88A', tickfont=dict(color='#4A3F35')),
-            yaxis=dict(gridcolor='#E0D5C0', linecolor='#B8A88A', tickfont=dict(color='#4A3F35'))
+            title=t("drawdowns_from_ath"), xaxis_title=t("date"), yaxis_title="Drawdown (%)",
+            template='plotly_white', height=350, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='#FFFEFA',
+            font=dict(family="Source Sans Pro, sans-serif", color='#4A3F35'),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5)
         )
-        
         st.plotly_chart(fig_dd, use_container_width=True)
         
         col_dd1, col_dd2 = st.columns(2)
         with col_dd1:
-            max_dd1 = df1['Drawdown'].min()
-            st.metric(f"{t('max_drawdown')} {asset1_name}", f"{max_dd1:.1f}%")
+            st.metric(f"{t('max_drawdown')} {asset1_name}", f"{df1['Drawdown'].min():.1f}%")
         with col_dd2:
-            max_dd2 = df2['Drawdown'].min()
-            st.metric(f"{t('max_drawdown')} {asset2_name}", f"{max_dd2:.1f}%")
+            st.metric(f"{t('max_drawdown')} {asset2_name}", f"{df2['Drawdown'].min():.1f}%")
     
-    # VOLUME CHART
+    # Volume Chart
     if show_volume:
         st.markdown("---")
         st.header(t("trading_volumes"))
         
         fig_vol = make_subplots(rows=2, cols=1, shared_xaxes=True,
-                                subplot_titles=(f"{t('volume')} {asset1_name}", f"{t('volume')} {asset2_name}"),
-                                vertical_spacing=0.15)
+                                subplot_titles=(f"{t('volume')} {asset1_name}", f"{t('volume')} {asset2_name}"))
+        fig_vol.add_trace(go.Bar(x=df1['Date'], y=df1['Volume'], name=asset1_name, marker=dict(color='#C45B28')), row=1, col=1)
+        fig_vol.add_trace(go.Bar(x=df2['Date'], y=df2['Volume'], name=asset2_name, marker=dict(color='#1B6B4A')), row=2, col=1)
         
-        fig_vol.add_trace(
-            go.Bar(x=df1['Date'], y=df1['Volume'], name=asset1_name, 
-                   marker=dict(color='#C45B28', line=dict(width=0))),
-            row=1, col=1
-        )
-        
-        fig_vol.add_trace(
-            go.Bar(x=df2['Date'], y=df2['Volume'], name=asset2_name, 
-                   marker=dict(color='#1B6B4A', line=dict(width=0))),
-            row=2, col=1
-        )
-        
-        fig_vol.update_layout(
-            height=450,
-            template='plotly_white',
-            showlegend=False,
-            margin=dict(l=60, r=20, t=40, b=40),
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='#FFFEFA',
-            font=dict(family="Source Sans Pro, sans-serif", color='#4A3F35', size=12),
-            bargap=0.1
-        )
-        
-        fig_vol.update_annotations(font=dict(color='#4A3728', size=13, family="Source Sans Pro, sans-serif"))
-        fig_vol.update_xaxes(gridcolor='#E0D5C0', linecolor='#B8A88A', tickfont=dict(color='#4A3F35', size=11))
-        fig_vol.update_yaxes(gridcolor='#E0D5C0', linecolor='#B8A88A', tickfont=dict(color='#4A3F35', size=11))
-        
+        fig_vol.update_layout(height=450, template='plotly_white', showlegend=False,
+                              paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='#FFFEFA')
         st.plotly_chart(fig_vol, use_container_width=True)
     
-    # CORRELATION
+    # Correlation
     st.markdown("---")
     st.header(t("correlation_analysis"))
     
-    window = 30
-    
-    merged_corr = pd.merge(
-        df1[['Date', 'Close']].rename(columns={'Close': 'Asset1'}),
-        df2[['Date', 'Close']].rename(columns={'Close': 'Asset2'}),
-        on='Date',
-        how='inner'
-    )
-    
+    merged_corr = pd.merge(df1[['Date', 'Close']].rename(columns={'Close': 'Asset1'}),
+                           df2[['Date', 'Close']].rename(columns={'Close': 'Asset2'}), on='Date', how='inner')
     merged_corr['Return1'] = merged_corr['Asset1'].pct_change()
     merged_corr['Return2'] = merged_corr['Asset2'].pct_change()
-    merged_corr['Rolling_Corr'] = merged_corr['Return1'].rolling(window=window).corr(merged_corr['Return2'])
+    merged_corr['Rolling_Corr'] = merged_corr['Return1'].rolling(window=30).corr(merged_corr['Return2'])
     
     col_corr1, col_corr2 = st.columns([1, 2])
     
     with col_corr1:
         overall_corr = merged_corr['Return1'].corr(merged_corr['Return2'])
         st.metric(t("overall_correlation"), f"{overall_corr:.3f}")
-        
-        st.markdown(f"""
-        **{t('interpretation')}:**
+        st.markdown(f"""**{t('interpretation')}:**
         - **> 0.7**: {t('strong_positive')}
         - **0.3 - 0.7**: {t('moderate')}
         - **-0.3 - 0.3**: {t('weak')}
-        - **< -0.3**: {t('negative')}
-        """)
+        - **< -0.3**: {t('negative')}""")
     
     with col_corr2:
-        fig_corr = px.line(
-            merged_corr,
-            x='Date',
-            y='Rolling_Corr',
-            title=f"{t('rolling_correlation')} ({window} {t('days')})",
-            template='plotly_white'
-        )
-        fig_corr.add_hline(y=0, line_dash="dash", line_color="#8B7355", line_width=1.5)
+        fig_corr = px.line(merged_corr, x='Date', y='Rolling_Corr', title=f"{t('rolling_correlation')} (30 {t('days')})")
+        fig_corr.add_hline(y=0, line_dash="dash", line_color="#8B7355")
         fig_corr.update_traces(line=dict(color='#C45B28', width=2.5))
-        fig_corr.update_layout(
-            yaxis_title=t("overall_correlation"),
-            height=300,
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='#FFFEFA',
-            font=dict(family="Source Sans Pro, sans-serif", color='#4A3F35', size=12),
-            title_font=dict(family="Libre Baskerville, serif", color='#4A3728', size=14),
-            xaxis=dict(gridcolor='#E0D5C0', linecolor='#B8A88A', tickfont=dict(color='#4A3F35')),
-            yaxis=dict(gridcolor='#E0D5C0', linecolor='#B8A88A', tickfont=dict(color='#4A3F35'))
-        )
+        fig_corr.update_layout(yaxis_title=t("overall_correlation"), height=300,
+                               paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='#FFFEFA')
         st.plotly_chart(fig_corr, use_container_width=True)
     
-    # NEWS
+    # News
     st.markdown("---")
     st.header(t("recent_news"))
     
@@ -2010,7 +1508,7 @@ with tab_comparison:
         else:
             st.info(t("no_news"))
     
-    # RAW DATA
+    # Raw Data & Export
     st.markdown("---")
     st.header(t("raw_data"))
     
@@ -2020,59 +1518,36 @@ with tab_comparison:
     with st.expander(f"{t('view_data')} {asset2_name}"):
         st.dataframe(df2, use_container_width=True)
     
-    with st.expander(t("merged_data")):
-        st.dataframe(merged, use_container_width=True)
-    
-    # EXPORT
     st.markdown("---")
     st.header(t("export_data"))
     
     col_export1, col_export2 = st.columns(2)
-    
     with col_export1:
-        csv1 = df1.to_csv(index=False)
-        st.download_button(
-            label=f"{t('download')} {asset1_name} (CSV)",
-            data=csv1,
-            file_name=f"{asset1_ticker}_{years}y.csv",
-            mime="text/csv"
-        )
-    
+        st.download_button(label=f"{t('download')} {asset1_name} (CSV)", data=df1.to_csv(index=False),
+                           file_name=f"{asset1_ticker}_{years}y.csv", mime="text/csv")
     with col_export2:
-        csv2 = df2.to_csv(index=False)
-        st.download_button(
-            label=f"{t('download')} {asset2_name} (CSV)",
-            data=csv2,
-            file_name=f"{asset2_ticker}_{years}y.csv",
-            mime="text/csv"
-        )
+        st.download_button(label=f"{t('download')} {asset2_name} (CSV)", data=df2.to_csv(index=False),
+                           file_name=f"{asset2_ticker}_{years}y.csv", mime="text/csv")
+
 
 # =============================================================================
-# TAB 2: ECONOMIC ANALYSIS BY CONTINENT
+# TAB 2: ECONOMIC ANALYSIS
 # =============================================================================
 with tab_economic:
     st.markdown(f"*{t('analysis_disclaimer')}*")
     
-    # Check for API key in secrets first, then allow manual input
     api_key_from_secrets = st.secrets.get("GROQ_API_KEY", None) if hasattr(st, 'secrets') else None
     
     if api_key_from_secrets:
         api_key = api_key_from_secrets
         st.success("✅ API Key loaded from secrets")
     else:
-        # API Key input (manual)
         st.subheader(t("api_key_required"))
         st.markdown(f"{t('api_key_help')} [console.groq.com](https://console.groq.com)")
-        
-        api_key = st.text_input(
-            t("enter_api_key"),
-            type="password",
-            help="Get your free API key at console.groq.com"
-        )
+        api_key = st.text_input(t("enter_api_key"), type="password")
     
     st.markdown("---")
     
-    # Continent selection
     continents_dict = t("continents")
     if isinstance(continents_dict, dict):
         continent_options = list(continents_dict.values())
@@ -2081,56 +1556,181 @@ with tab_economic:
         continent_options = ["North America", "South America", "Europe", "Asia", "Africa", "Oceania"]
         continent_keys = ["north_america", "south_america", "europe", "asia", "africa", "oceania"]
     
-    selected_continent = st.selectbox(
-        t("select_continent"),
-        options=continent_options
-    )
-    
-    # Get the key for the selected continent
+    selected_continent = st.selectbox(t("select_continent"), options=continent_options)
     selected_idx = continent_options.index(selected_continent)
     selected_key = continent_keys[selected_idx]
     
-    # Display current market indicators for selected continent
     st.subheader(t("economic_indicators"))
-    
-    indicators = CONTINENT_INDICATORS.get(selected_key, {})
     market_data = get_continent_data(selected_key)
     
     if market_data:
         cols = st.columns(min(len(market_data), 4))
         for idx, (name, data) in enumerate(market_data.items()):
             with cols[idx % 4]:
-                delta_color = "normal" if data["change_1m"] >= 0 else "inverse"
-                st.metric(
-                    label=name,
-                    value=f"{data['current']:,.2f}",
-                    delta=f"{data['change_1m']:+.1f}% (1M)"
-                )
-    else:
-        st.info("Loading market data...")
+                st.metric(label=name, value=f"{data['current']:,.2f}", delta=f"{data['change_1m']:+.1f}% (1M)")
     
     st.markdown("---")
     
-    # Generate analysis button
     if st.button(t("generate_analysis"), use_container_width=True, disabled=not api_key):
         if api_key:
             with st.spinner(t("loading_analysis")):
-                analysis = generate_economic_analysis(
-                    selected_key, 
-                    selected_continent, 
-                    api_key,
-                    st.session_state.language
-                )
-                
+                analysis = generate_economic_analysis(selected_key, selected_continent, api_key, st.session_state.language)
                 if analysis:
                     st.subheader(t("ai_analysis"))
                     st.markdown(analysis)
                     st.caption(f"{t('last_analysis')}: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
                 else:
                     st.error(t("analysis_error"))
-        else:
-            st.warning(t("api_key_required"))
     
-    # Show placeholder if no API key
     if not api_key:
         st.info("👆 " + t("api_key_required") + " " + t("api_key_help") + " [console.groq.com](https://console.groq.com)")
+
+
+# =============================================================================
+# TAB 3: CREDIT RISK ANALYSIS
+# =============================================================================
+with tab_credit:
+    st.markdown(f"### {t('credit_risk_title')}")
+    st.markdown(f"*{t('merton_explanation')}*")
+    
+    st.markdown("---")
+    
+    # Input section
+    col_input1, col_input2 = st.columns([2, 1])
+    
+    with col_input1:
+        ticker_input = st.text_input(t("enter_ticker"), value="AAPL", placeholder="e.g., AAPL, MSFT, BA")
+    
+    with col_input2:
+        risk_free_rate = st.number_input(t("risk_free_rate"), min_value=0.0, max_value=0.20, value=0.045, step=0.005, format="%.3f")
+        time_horizon = st.number_input(t("time_horizon"), min_value=0.5, max_value=5.0, value=1.0, step=0.5)
+    
+    analyze_button = st.button(t("analyze_button"), use_container_width=True, type="primary")
+    
+    if analyze_button and ticker_input:
+        with st.spinner(t("analyzing")):
+            data = get_credit_risk_data(ticker_input.upper())
+            
+            if data.get('success', False):
+                # Calculate Merton model
+                market_cap = data['market_cap']
+                total_debt = data['total_debt']
+                equity_vol = data['equity_volatility']
+                company_name = data['company_name']
+                
+                # Asset value = Market Cap + Debt (simplified)
+                V = market_cap + total_debt
+                D = total_debt
+                sigma_V = equity_vol  # Using equity vol as proxy (simplification)
+                
+                DD = calculate_distance_to_default(V, D, sigma_V, risk_free_rate, time_horizon)
+                PD = calculate_probability_of_default(DD)
+                risk_cat, risk_class = get_risk_category(PD)
+                
+                st.markdown("---")
+                st.subheader(f"📊 {company_name} ({ticker_input.upper()})")
+                
+                # Results in columns
+                col_res1, col_res2, col_res3 = st.columns(3)
+                
+                with col_res1:
+                    st.metric(t("distance_to_default"), f"{DD:.2f}σ")
+                
+                with col_res2:
+                    st.metric(t("probability_of_default"), f"{PD*100:.2f}%")
+                
+                with col_res3:
+                    st.markdown(f"""
+                    <div class="risk-gauge {risk_class}">
+                        <strong>{t('risk_category')}</strong><br>
+                        <span style="font-size: 1.5em;">{t(risk_cat)}</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Model inputs display
+                st.markdown("---")
+                with st.expander(t("model_inputs")):
+                    col_inp1, col_inp2, col_inp3 = st.columns(3)
+                    
+                    with col_inp1:
+                        st.metric(t("market_cap"), f"${market_cap/1e9:.2f}B")
+                        st.metric(t("total_debt"), f"${total_debt/1e9:.2f}B")
+                    
+                    with col_inp2:
+                        st.metric(t("asset_value"), f"${V/1e9:.2f}B")
+                        st.metric(t("equity_volatility"), f"{equity_vol*100:.1f}%")
+                    
+                    with col_inp3:
+                        st.metric(t("risk_free_rate"), f"{risk_free_rate*100:.1f}%")
+                        st.metric(t("time_horizon"), f"{time_horizon} {t('years')}")
+                
+                # Interpretation
+                st.markdown("---")
+                st.markdown(f"""
+                **{t('interpretation')}:**
+                
+                - **{t('distance_to_default')}**: {DD:.2f}σ means the firm's asset value would need to fall by {DD:.2f} standard deviations to reach the default barrier.
+                - **{t('probability_of_default')}**: Based on the Merton model, there is a **{PD*100:.2f}%** probability of default within {time_horizon} year(s).
+                - A higher Distance to Default indicates lower credit risk. Values above 3σ typically indicate very safe companies.
+                """)
+                
+                # Benchmark comparison
+                st.markdown("---")
+                st.subheader(t("benchmark_companies"))
+                
+                benchmark_tickers = ['AAPL', 'MSFT', 'BA', 'F', 'AAL']
+                benchmark_data = []
+                
+                for bticker in benchmark_tickers:
+                    if bticker.upper() != ticker_input.upper():
+                        bdata = get_credit_risk_data(bticker)
+                        if bdata.get('success', False):
+                            bV = bdata['market_cap'] + bdata['total_debt']
+                            bDD = calculate_distance_to_default(bV, bdata['total_debt'], bdata['equity_volatility'], risk_free_rate, time_horizon)
+                            bPD = calculate_probability_of_default(bDD)
+                            benchmark_data.append({
+                                'Ticker': bticker,
+                                'Company': bdata['company_name'][:20],
+                                'DD (σ)': f"{bDD:.2f}",
+                                'PD (%)': f"{bPD*100:.2f}%"
+                            })
+                
+                if benchmark_data:
+                    # Add the analyzed company
+                    benchmark_data.insert(0, {
+                        'Ticker': ticker_input.upper(),
+                        'Company': company_name[:20] + " ⭐",
+                        'DD (σ)': f"{DD:.2f}",
+                        'PD (%)': f"{PD*100:.2f}%"
+                    })
+                    
+                    bench_df = pd.DataFrame(benchmark_data)
+                    st.dataframe(bench_df, use_container_width=True, hide_index=True)
+                
+            else:
+                st.error(t("data_unavailable"))
+                if 'error' in data:
+                    st.caption(f"Error: {data['error']}")
+    
+    # ML Model section (informational)
+    st.markdown("---")
+    with st.expander(f"ℹ️ {t('ml_model')}"):
+        st.markdown(f"""
+        **{t('ml_explanation')}**
+        
+        The ML model was trained on the American Bankruptcy Dataset containing:
+        - 78,682 firm-year observations (1999-2018)
+        - 18 financial ratios (profitability, leverage, liquidity, activity)
+        - Binary classification: bankrupt vs. non-bankrupt
+        
+        **Model Performance:**
+        - Validation AUC-ROC: 0.739
+        - Test AUC-ROC: 0.754
+        
+        **Top Predictive Features:**
+        1. Industry sector (Division)
+        2. X1 (likely a profitability ratio)
+        3. X15 (likely a leverage ratio)
+        
+        **Limitation:** Live predictions would require mapping current financial statement data from Yahoo Finance to the exact ratios used in training (X1-X18 from Compustat). This mapping is non-trivial and would require access to the original feature definitions.
+        """)
